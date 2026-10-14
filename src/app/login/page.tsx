@@ -13,7 +13,6 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
   User,
   UserPlus,
   LogIn,
@@ -24,8 +23,8 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
 
   // État formulaire Connexion
-  const [email, setEmail] = useState('admin@mffe.gouv.ci');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   // État formulaire Inscription
   const [regName, setRegName] = useState('');
@@ -128,13 +127,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const setPresetUser = (presetEmail: string, presetPass: string) => {
-    setEmail(presetEmail);
-    setPassword(presetPass);
-    setError(null);
-    setMode('login');
   };
 
   return (
@@ -497,39 +489,6 @@ export default function LoginPage() {
               </p>
             )}
           </div>
-
-          {/* Raccourcis de Test Rapide (Un clic sur mobile) */}
-          {mode === 'login' && (
-            <div className="mt-5 pt-4 border-t border-slate-800/80">
-              <p className="text-xs text-slate-400 font-medium mb-2.5 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Comptes de démonstration préconfigurés :</span>
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPresetUser('admin@mffe.gouv.ci', 'Password123!')}
-                  className="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-left transition text-xs flex flex-col gap-0.5 active:scale-95"
-                >
-                  <span className="font-semibold text-orange-400 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Admin
-                  </span>
-                  <span className="text-slate-400 truncate">admin@mffe.gouv.ci</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPresetUser('agent.drabj@mffe.gouv.ci', 'Password123!')}
-                  className="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-left transition text-xs flex flex-col gap-0.5 active:scale-95"
-                >
-                  <span className="font-semibold text-emerald-400 flex items-center gap-1">
-                    <Building2 className="w-3.5 h-3.5" /> Utilisateur
-                  </span>
-                  <span className="text-slate-400 truncate">agent.drabj@mffe...</span>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </main>
 
