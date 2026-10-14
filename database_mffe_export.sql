@@ -988,8 +988,6 @@ INSERT INTO public.production_carte (id, annee_scolaire, quantite_produite, cout
 -- Data for Name: user; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public."user" (id, email, password_hash, created_at, name, role) VALUES ('1', 'admin@mffe.gouv.ci', '$2b$10$a9GOQooe0TMYfIQCiSsWNO6NWGBsvucr6qTlLDky/fH.wTyFXVKz2', '2026-10-13 11:01:36.67148+00', 'Administrateur MFFE', 'ADMIN');
-INSERT INTO public."user" (id, email, password_hash, created_at, name, role) VALUES ('USR-002', 'agent.drabj@mffe.gouv.ci', '$2b$10$a9GOQooe0TMYfIQCiSsWNO6NWGBsvucr6qTlLDky/fH.wTyFXVKz2', '2026-10-13 13:02:16.651462+00', 'KOUADIO Marc (Agent DR-ABJ)', 'USER');
 INSERT INTO public."user" (id, email, password_hash, created_at, name, role) VALUES ('USR-MV6Y1AN9-057', 'ester@gmail.com', '$2b$10$5LARGRFxzayVeZKhCsYfyezwj.QeC95tArehWi31/CAiI819.CAnS', '2026-10-13 17:17:06.982596+00', 'DANHO Ester', 'ADMIN');
 INSERT INTO public."user" (id, email, password_hash, created_at, name, role) VALUES ('USR-MV6Y5MLQ-737', 'stagiaire@gmail.com', '$2b$10$GYxQqZBka7AkiWGiltCjFOxFLMqMrT8sX3wcA/bzeagL5.TpKdxEy', '2026-10-13 17:20:29.104063+00', 'Stagiaire', 'USER');
 INSERT INTO public."user" (id, email, password_hash, created_at, name, role) VALUES ('USR-MV6YAV8C-897', 'odjira@gmail.com', '$2b$10$BbXpMGoM25JNsnKR9W5pWe6U/hW0Q09wlQSYBsPzcOMyBqTpJKZGK', '2026-10-13 17:24:33.579505+00', 'ODJIRA', 'ADMIN');
