@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -23,7 +23,11 @@ import {
   Layers,
   Sparkles,
   ExternalLink,
-  ShieldAlert,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface RegionalEntityDetail {
@@ -82,7 +86,13 @@ export default function CartographiePage() {
   const [selectedZone, setSelectedZone] = useState<string>('TOUTES');
   const [selectedStatus, setSelectedStatus] = useState<string>('TOUS');
   const [viewMode, setViewMode] = useState<'carte' | 'tableau'>('carte');
+  const [mapTheme, setMapTheme] = useState<'officiel' | 'sombre'>('officiel');
+  const [showStockBadges, setShowStockBadges] = useState(true);
   const [structureSearch, setStructureSearch] = useState('');
+
+  // Zoom & Pan
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
   const fetchCartoData = async () => {
     try {
@@ -109,7 +119,6 @@ export default function CartographiePage() {
     fetchCartoData();
   }, []);
 
-  // Extraire les zones uniques
   const zonesDisponibles = useMemo(() => {
     if (!data?.regions) return [];
     const set = new Set<string>();
@@ -117,7 +126,6 @@ export default function CartographiePage() {
     return Array.from(set).sort();
   }, [data]);
 
-  // Régions filtrées
   const filteredRegions = useMemo(() => {
     if (!data?.regions) return [];
     return data.regions.filter((r) => {
@@ -138,13 +146,16 @@ export default function CartographiePage() {
     });
   }, [data, searchQuery, selectedZone, selectedStatus]);
 
-  // Région active sélectionnée
   const activeRegion = useMemo(() => {
     if (!data?.regions || !selectedRegionId) return null;
     return data.regions.find((r) => r.id === selectedRegionId) || null;
   }, [data, selectedRegionId]);
 
-  // Régions sous-structures filtrées
+  const hoveredRegion = useMemo(() => {
+    if (!data?.regions || !hoveredRegionId) return null;
+    return data.regions.find((r) => r.id === hoveredRegionId) || null;
+  }, [data, hoveredRegionId]);
+
   const filteredStructures = useMemo(() => {
     if (!activeRegion) return [];
     if (!structureSearch.trim()) return activeRegion.entites;
@@ -158,7 +169,6 @@ export default function CartographiePage() {
     );
   }, [activeRegion, structureSearch]);
 
-  // Export CSV
   const handleExportCSV = () => {
     if (!data?.regions) return;
     const headers = [
@@ -194,6 +204,13 @@ export default function CartographiePage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleZoomIn = () => setZoomLevel((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))));
+  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.75, Number((z - 0.25).toFixed(2))));
+  const handleResetZoom = () => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
   };
 
   return (
@@ -352,7 +369,7 @@ export default function CartographiePage() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Rechercher une région, chef-lieu, ville..."
+                placeholder="Rechercher une région (ex: Bouaké, Folon, Gbêkê, Daloa...)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
@@ -382,282 +399,271 @@ export default function CartographiePage() {
               <option value="TOUS">Tous les statuts</option>
               <option value="DOTEES">Dotées (Reçu &gt; 0)</option>
               <option value="DISTRIBUEES">En cours de distribution</option>
-              <option value="NON_DOTEES">En attente de dotation (0 reçu)</option>
+              <option value="NON_DOTEES">En attente de dotation</option>
             </select>
           </div>
 
-          <div className="text-xs text-slate-400 flex items-center gap-2 font-medium">
-            <span>Affichage :</span>
-            <strong className="text-orange-400">{filteredRegions.length}</strong> / {data?.regions.length ?? 33} région(s)
+          <div className="flex items-center gap-3 text-xs text-slate-400">
+            {/* Bascule Thème Visuel */}
+            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <button
+                onClick={() => setMapTheme('officiel')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition ${
+                  mapTheme === 'officiel' ? 'bg-white text-slate-900 shadow' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Affichage fidèle au fichier 'carte de la cote d'ivoire'"
+              >
+                <Sun className="w-3 h-3 text-amber-500" />
+                <span>Carte Officielle</span>
+              </button>
+              <button
+                onClick={() => setMapTheme('sombre')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition ${
+                  mapTheme === 'sombre' ? 'bg-slate-800 text-cyan-400 shadow' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Affichage Thème Sombre Néon"
+              >
+                <Moon className="w-3 h-3 text-cyan-400" />
+                <span>Sombre Néon</span>
+              </button>
+            </div>
+
+            {/* Bascule Badges de stock */}
+            <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-slate-300">
+              <input
+                type="checkbox"
+                checked={showStockBadges}
+                onChange={(e) => setShowStockBadges(e.target.checked)}
+                className="rounded border-slate-700 bg-slate-900 text-orange-500 focus:ring-0"
+              />
+              <span>Badges de stock</span>
+            </label>
           </div>
         </section>
 
         {/* 4. Vue Principale : Carte Interactive ou Tableau */}
         {viewMode === 'carte' ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* COLONNE GAUCHE (7 cols) : Carte SVG Interactive de la Côte d'Ivoire */}
-            <div className="lg:col-span-7 bg-gradient-to-b from-slate-900/90 to-[#0b1222] p-4 sm:p-6 rounded-3xl border border-slate-800/90 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[620px]">
-              {/* En-tête de la carte */}
-              <div className="flex items-center justify-between mb-2">
+            {/* COLONNE GAUCHE (7 cols) : Carte Officielle de la Côte d'Ivoire */}
+            <div
+              className={`lg:col-span-7 rounded-3xl border shadow-2xl p-4 sm:p-5 relative overflow-hidden flex flex-col justify-between transition-colors duration-300 ${
+                mapTheme === 'officiel'
+                  ? 'bg-white border-slate-200 text-slate-800'
+                  : 'bg-gradient-to-b from-slate-900/95 to-[#080d19] border-slate-800 text-slate-100'
+              }`}
+            >
+              {/* Barre de contrôle supérieure de la carte */}
+              <div className="flex items-center justify-between mb-3 border-b pb-2.5 border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                  <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                    <span>Carte Interactive de la Côte d'Ivoire</span>
-                  </h2>
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    Découpage Administratif des 31 Régions & Districts
+                  </span>
                 </div>
-                <div className="text-[11px] text-slate-400 bg-slate-950/60 px-2.5 py-1 rounded-full border border-slate-800">
-                  Cliquez sur un pôle régional pour inspecter
+
+                {/* Commandes Zoom */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleZoomIn}
+                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                    title="Zoomer (+)"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={handleZoomOut}
+                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                    title="Dézoomer (-)"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={handleResetZoom}
+                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition text-[11px] font-mono px-2"
+                    title="Réinitialiser"
+                  >
+                    {Math.round(zoomLevel * 100)}%
+                  </button>
                 </div>
               </div>
 
-              {/* Canevas SVG de la Carte CI */}
-              <div className="relative w-full aspect-[8/7] max-h-[560px] my-auto flex items-center justify-center">
-                <svg
-                  viewBox="0 0 800 700"
-                  className="w-full h-full drop-shadow-[0_10px_25px_rgba(0,0,0,0.5)] select-none"
+              {/* Conteneur SVG avec Carte Image Officielle 'carte de la cote d'ivoire.gif' + Couche Interactive */}
+              <div className="relative w-full aspect-[713/746] max-h-[640px] overflow-hidden rounded-2xl flex items-center justify-center select-none bg-slate-50 dark:bg-slate-950/40">
+                <div
+                  className="w-full h-full transition-transform duration-200 flex items-center justify-center"
+                  style={{ transform: `scale(${zoomLevel})` }}
                 >
-                  {/* Dégradés et Filtres SVG */}
-                  <defs>
-                    <linearGradient id="ci-land-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#1e293b" />
-                      <stop offset="50%" stopColor="#0f172a" />
-                      <stop offset="100%" stopColor="#090d16" />
-                    </linearGradient>
+                  <svg
+                    viewBox="0 0 713 746"
+                    className="w-full h-full max-h-[640px] drop-shadow-md select-none"
+                  >
+                    <defs>
+                      <filter id="badge-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.4" />
+                      </filter>
+                      <radialGradient id="highlight-pulse" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="#f97316" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
+                      </radialGradient>
+                    </defs>
 
-                    <linearGradient id="ci-coast-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#0284c7" stopOpacity="0.2" />
-                      <stop offset="100%" stopColor="#0369a1" stopOpacity="0.6" />
-                    </linearGradient>
-
-                    <radialGradient id="ocean-glow" cx="50%" cy="100%" r="80%">
-                      <stop offset="0%" stopColor="#0369a1" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#070b14" stopOpacity="0" />
-                    </radialGradient>
-
-                    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="6" result="blur" />
-                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
-                  </defs>
-
-                  {/* Océan Atlantique / Golfe de Guinée (Sud) */}
-                  <rect x="0" y="580" width="800" height="120" fill="url(#ocean-glow)" opacity="0.6" />
-                  <text x="400" y="670" textAnchor="middle" fill="#0284c7" fontSize="13" letterSpacing="4" opacity="0.5" fontWeight="bold">
-                    GOLFE DE GUINÉE • OCÉAN ATLANTIQUE
-                  </text>
-
-                  {/* Pays Frontaliers repères */}
-                  <text x="320" y="45" fill="#475569" fontSize="12" letterSpacing="2" fontWeight="bold" opacity="0.4">
-                    MALI
-                  </text>
-                  <text x="630" y="90" fill="#475569" fontSize="12" letterSpacing="2" fontWeight="bold" opacity="0.4">
-                    BURKINA FASO
-                  </text>
-                  <text x="730" y="380" fill="#475569" fontSize="12" letterSpacing="2" fontWeight="bold" opacity="0.4">
-                    GHANA
-                  </text>
-                  <text x="50" y="280" fill="#475569" fontSize="12" letterSpacing="2" fontWeight="bold" opacity="0.4">
-                    GUINÉE
-                  </text>
-                  <text x="50" y="500" fill="#475569" fontSize="12" letterSpacing="2" fontWeight="bold" opacity="0.4">
-                    LIBÉRIA
-                  </text>
-
-                  {/* Contour Réaliste Stylisé du Territoire Ivoirien */}
-                  <path
-                    d="M 120 180 
-                       L 180 120 
-                       L 270 95 
-                       L 380 90 
-                       L 520 80 
-                       L 620 110 
-                       L 650 170 
-                       L 680 230 
-                       L 680 340 
-                       L 720 400 
-                       L 700 500 
-                       L 650 560 
-                       L 580 575 
-                       L 480 570 
-                       L 360 565 
-                       L 250 580 
-                       L 190 540 
-                       L 130 450 
-                       L 100 370 
-                       L 90 270 
-                       Z"
-                    fill="url(#ci-land-gradient)"
-                    stroke="#334155"
-                    strokeWidth="3"
-                    strokeLinejoin="round"
-                    className="transition duration-300"
-                  />
-
-                  {/* Lignes de quadrillage territorial subtiles */}
-                  <path
-                    d="M 120 180 Q 400 350 680 340"
-                    fill="none"
-                    stroke="#1e293b"
-                    strokeWidth="1.5"
-                    strokeDasharray="4 6"
-                  />
-                  <path
-                    d="M 380 90 Q 420 350 480 570"
-                    fill="none"
-                    stroke="#1e293b"
-                    strokeWidth="1.5"
-                    strokeDasharray="4 6"
-                  />
-
-                  {/* Rayonnement interactif sous la région sélectionnée */}
-                  {activeRegion && (
-                    <circle
-                      cx={activeRegion.x}
-                      cy={activeRegion.y}
-                      r="36"
-                      fill="#f97316"
-                      opacity="0.15"
-                      className="animate-pulse"
+                    {/* Image Officielle de Fond fidèle au fichier "carte de la cote d'ivoire.gif" */}
+                    <image
+                      href="/carte-cote-ivoire.png"
+                      x="0"
+                      y="0"
+                      width="713"
+                      height="746"
+                      preserveAspectRatio="xMidYMid meet"
+                      className={`transition-all duration-300 ${
+                        mapTheme === 'sombre'
+                          ? 'invert hue-rotate-180 brightness-90 contrast-125 opacity-80'
+                          : 'opacity-100'
+                      }`}
                     />
-                  )}
 
-                  {/* Hubs / Points Régionaux */}
-                  {data?.regions.map((reg) => {
-                    const isSelected = selectedRegionId === reg.id;
-                    const isHovered = hoveredRegionId === reg.id;
-                    const hasStock = reg.totalRecu > 0;
-                    const hasDelivered = reg.totalDistribue > 0;
+                    {/* Zone de surbrillance animée sous la région sélectionnée */}
+                    {activeRegion && (
+                      <circle
+                        cx={activeRegion.x}
+                        cy={activeRegion.y}
+                        r="38"
+                        fill="url(#highlight-pulse)"
+                        className="animate-pulse pointer-events-none"
+                      />
+                    )}
 
-                    // Couleur du nœud selon état
-                    let pinColor = '#475569'; // gris par défaut (non doté)
-                    let strokeColor = '#334155';
-                    if (hasDelivered && reg.tauxDistributionPct >= 80) {
-                      pinColor = '#10b981'; // Vert vif
-                      strokeColor = '#059669';
-                    } else if (hasDelivered) {
-                      pinColor = '#f97316'; // Orange distribution
-                      strokeColor = '#ea580c';
-                    } else if (hasStock) {
-                      pinColor = '#a855f7'; // Violet stock reçu
-                      strokeColor = '#9333ea';
-                    }
+                    {/* Calque des Régions Interactives et Badges de Cartes */}
+                    {data?.regions.map((reg) => {
+                      const isSelected = selectedRegionId === reg.id;
+                      const isHovered = hoveredRegionId === reg.id;
+                      const hasStock = reg.totalRecu > 0;
+                      const hasDelivered = reg.totalDistribue > 0;
 
-                    const radius = isSelected ? 12 : isHovered ? 10 : hasStock ? 8 : 6;
+                      // Couleur thématique selon l'état de livraison
+                      let color = '#64748b'; // gris neutre
+                      if (hasDelivered && reg.tauxDistributionPct >= 80) {
+                        color = '#10b981'; // Vert
+                      } else if (hasDelivered) {
+                        color = '#f97316'; // Orange
+                      } else if (hasStock) {
+                        color = '#8b5cf6'; // Violet
+                      }
 
-                    return (
-                      <g
-                        key={reg.id}
-                        className="cursor-pointer transition-all duration-200"
-                        onClick={() => setSelectedRegionId(reg.id)}
-                        onMouseEnter={() => setHoveredRegionId(reg.id)}
-                        onMouseLeave={() => setHoveredRegionId(null)}
-                      >
-                        {/* Halo pulsant si sélectionné */}
-                        {isSelected && (
+                      return (
+                        <g
+                          key={reg.id}
+                          className="cursor-pointer transition-transform duration-150 active:scale-95"
+                          onClick={() => setSelectedRegionId(reg.id)}
+                          onMouseEnter={() => setHoveredRegionId(reg.id)}
+                          onMouseLeave={() => setHoveredRegionId(null)}
+                        >
+                          {/* Zone cliquable étendue transparente autour du libellé de la région */}
                           <circle
                             cx={reg.x}
                             cy={reg.y}
-                            r="22"
-                            fill="none"
-                            stroke={pinColor}
-                            strokeWidth="2"
-                            opacity="0.6"
-                            className="animate-ping"
+                            r={isSelected ? 32 : isHovered ? 28 : 22}
+                            fill={color}
+                            fillOpacity={isSelected ? 0.35 : isHovered ? 0.25 : hasStock ? 0.15 : 0.05}
+                            stroke={color}
+                            strokeWidth={isSelected ? 2.5 : isHovered ? 1.5 : 0.5}
+                            strokeDasharray={isSelected ? 'none' : '3 3'}
+                            className="transition-all duration-200"
                           />
-                        )}
 
-                        {/* Cercle extérieur interactif */}
-                        <circle
-                          cx={reg.x}
-                          cy={reg.y}
-                          r={radius + 4}
-                          fill={isSelected ? '#ffffff' : pinColor}
-                          opacity={isSelected ? 0.3 : 0.15}
-                        />
-
-                        {/* Point central */}
-                        <circle
-                          cx={reg.x}
-                          cy={reg.y}
-                          r={radius}
-                          fill={pinColor}
-                          stroke={isSelected ? '#ffffff' : strokeColor}
-                          strokeWidth={isSelected ? 3 : 1.5}
-                          className="transition-all duration-200"
-                        />
-
-                        {/* Libellé de la ville / chef-lieu */}
-                        <text
-                          x={reg.x}
-                          y={reg.y - (radius + 6)}
-                          textAnchor="middle"
-                          fill={isSelected ? '#38bdf8' : isHovered ? '#ffffff' : hasStock ? '#e2e8f0' : '#64748b'}
-                          fontSize={isSelected ? 12 : isHovered ? 11 : 9.5}
-                          fontWeight={isSelected ? 'bold' : '600'}
-                          className="pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-                        >
-                          {reg.chefLieu}
-                        </text>
-
-                        {/* Badge de stock sur les pôles actifs */}
-                        {hasStock && (
-                          <g transform={`translate(${reg.x + 8}, ${reg.y - 12})`}>
-                            <rect
-                              x="0"
-                              y="0"
-                              width={reg.totalRecu > 999 ? 34 : 26}
-                              height="14"
-                              rx="7"
-                              fill="#0f172a"
-                              stroke={pinColor}
-                              strokeWidth="1.5"
+                          {/* Anneau de pulsation si la région est sélectionnée */}
+                          {isSelected && (
+                            <circle
+                              cx={reg.x}
+                              cy={reg.y}
+                              r="28"
+                              fill="none"
+                              stroke={color}
+                              strokeWidth="2"
+                              opacity="0.8"
+                              className="animate-ping"
                             />
-                            <text
-                              x={reg.totalRecu > 999 ? 17 : 13}
-                              y="10.5"
-                              textAnchor="middle"
-                              fill="#ffffff"
-                              fontSize="8"
-                              fontWeight="bold"
+                          )}
+
+                          {/* Puce d'état centrale */}
+                          <circle
+                            cx={reg.x}
+                            cy={reg.y}
+                            r={isSelected ? 6 : 4.5}
+                            fill={color}
+                            stroke="#ffffff"
+                            strokeWidth={isSelected ? 2 : 1}
+                          />
+
+                          {/* Badge de Statistiques Dynamiques Flottant (si activé) */}
+                          {showStockBadges && hasStock && (
+                            <g
+                              transform={`translate(${reg.x - 28}, ${reg.y + 10})`}
+                              filter="url(#badge-shadow)"
+                              className="transition-transform duration-200 hover:scale-110"
                             >
-                              {reg.totalRecu}
-                            </text>
-                          </g>
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
+                              <rect
+                                x="0"
+                                y="0"
+                                width="56"
+                                height="18"
+                                rx="9"
+                                fill={isSelected ? '#0f172a' : '#1e293b'}
+                                stroke={color}
+                                strokeWidth="1.5"
+                              />
+                              <text
+                                x="28"
+                                y="12.5"
+                                textAnchor="middle"
+                                fill="#ffffff"
+                                fontSize="9"
+                                fontWeight="bold"
+                                className="font-mono"
+                              >
+                                {reg.totalRecu} {reg.totalDistribue > 0 ? `| ${reg.totalDistribue}✓` : ''}
+                              </text>
+                            </g>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
               </div>
 
-              {/* Légende en bas de la carte */}
-              <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400">
-                <div className="flex flex-wrap items-center gap-4">
+              {/* Barre de légende officielle */}
+              <div
+                className={`mt-3 pt-3 border-t text-[11px] flex flex-wrap items-center justify-between gap-3 ${
+                  mapTheme === 'officiel' ? 'border-slate-200 text-slate-600' : 'border-slate-800 text-slate-400'
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-3.5">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm" />
                     <span>Forte distribution (&ge; 80%)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm shadow-orange-500/50" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm" />
                     <span>En cours de distribution</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-sm shadow-purple-500/50" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-sm" />
                     <span>En stock (Réceptionné)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />
-                    <span>Non doté (En attente)</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-600" />
+                    <span>En attente de dotation</span>
                   </div>
                 </div>
 
-                <div className="text-[10px] text-slate-500">
-                  Système d'Information DRH • MFFE
+                <div className="text-[10px] font-semibold text-slate-400">
+                  Source : Carte Administrative Officielle CI (31 Régions + 2 Districts)
                 </div>
               </div>
             </div>
 
-            {/* COLONNE DROITE (5 cols) : Fiche de Détail de la Région Sélectionnée */}
+            {/* COLONNE DROITE (5 cols) : Fiche de Détail Régionale Interactive */}
             <div className="lg:col-span-5 space-y-4">
               {activeRegion ? (
                 <div className="bg-slate-900/90 rounded-3xl border border-slate-800/90 p-5 shadow-xl space-y-5">
@@ -666,9 +672,11 @@ export default function CartographiePage() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                          {activeRegion.zone}
+                          Zone {activeRegion.zone}
                         </span>
-                        <span className="text-xs text-slate-400">Chef-lieu : <strong className="text-white">{activeRegion.chefLieu}</strong></span>
+                        <span className="text-xs text-slate-400">
+                          Chef-lieu : <strong className="text-white">{activeRegion.chefLieu}</strong>
+                        </span>
                       </div>
                       <h3 className="text-lg font-black text-white">{activeRegion.nom}</h3>
                       <p className="text-xs text-slate-400 font-mono mt-0.5">{activeRegion.sigle}</p>
@@ -689,7 +697,7 @@ export default function CartographiePage() {
                         {activeRegion.totalRecu === 0
                           ? 'En attente'
                           : activeRegion.tauxDistributionPct >= 80
-                          ? 'Couverture Complète'
+                          ? 'Couvert'
                           : activeRegion.totalDistribue > 0
                           ? 'En cours'
                           : 'Stock disponible'}
@@ -734,7 +742,7 @@ export default function CartographiePage() {
                       />
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1.5">
-                      {activeRegion.nbStructures} structures/établissements rattachés à cette Direction Régionale.
+                      {activeRegion.nbStructures} structures/complexes scolaires sous cette Direction Régionale.
                     </p>
                   </div>
 
@@ -814,19 +822,19 @@ export default function CartographiePage() {
                   <MapPin className="w-8 h-8 mx-auto text-slate-600 mb-2" />
                   <p className="text-sm font-semibold">Aucune région sélectionnée</p>
                   <p className="text-xs text-slate-500 mt-1">
-                    Cliquez sur un pôle sur la carte pour voir ses statistiques régionales.
+                    Cliquez sur une région sur la carte pour voir ses statistiques.
                   </p>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          /* 5. VUE ALTERNATIVE : Tableau Synthétique National */
+          /* 5. VUE TABLEAU SYNTHÉTIQUE */
           <div className="bg-slate-900/80 rounded-3xl border border-slate-800/90 overflow-hidden shadow-xl">
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-white">Tableau Synthétique Régional</h3>
-                <p className="text-xs text-slate-400">Bilan des 33 Directions Régionales et Districts</p>
+                <p className="text-xs text-slate-400">Bilan consolidé des 33 Directions Régionales et Districts</p>
               </div>
               <div className="text-xs text-slate-400">
                 Total réceptions enregistrées : <strong className="text-emerald-400">{data?.summary.totalRecu ?? 0} cartes</strong>
