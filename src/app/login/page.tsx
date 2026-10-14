@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CreditCard,
@@ -13,6 +13,7 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle2,
+  Sparkles,
   User,
   UserPlus,
   LogIn,
@@ -21,6 +22,28 @@ import {
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('login');
+
+  // Détecter si on est en développement local (localhost / 127.0.0.1)
+  const [isLocalDev, setIsLocalDev] = useState(false);
+
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV === 'development' ||
+      (typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1' ||
+          window.location.hostname.startsWith('192.168.')))
+    ) {
+      setIsLocalDev(true);
+    }
+  }, []);
+
+  const setPresetUser = (presetEmail: string, presetPass: string) => {
+    setEmail(presetEmail);
+    setPassword(presetPass);
+    setError(null);
+    setMode('login');
+  };
 
   // État formulaire Connexion
   const [email, setEmail] = useState('');
@@ -489,6 +512,44 @@ export default function LoginPage() {
               </p>
             )}
           </div>
+
+          {/* Raccourcis de Test Rapide — UNIQUEMENT VISIBLES EN DÉVELOPPEMENT LOCAL */}
+          {mode === 'login' && isLocalDev && (
+            <div className="mt-5 pt-4 border-t border-slate-800/80">
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Comptes de test (Local uniquement) :</span>
+                </p>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  Dev Local
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPresetUser('admin@mffe.gouv.ci', 'Password123!')}
+                  className="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-left transition text-xs flex flex-col gap-0.5 active:scale-95"
+                >
+                  <span className="font-semibold text-orange-400 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Admin
+                  </span>
+                  <span className="text-slate-400 truncate">admin@mffe.gouv.ci</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPresetUser('agent.drabj@mffe.gouv.ci', 'Password123!')}
+                  className="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-left transition text-xs flex flex-col gap-0.5 active:scale-95"
+                >
+                  <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                    <Building2 className="w-3.5 h-3.5" /> Utilisateur
+                  </span>
+                  <span className="text-slate-400 truncate">agent.drabj@mffe...</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
