@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   CheckCircle,
   SlidersHorizontal,
+  MapPin,
 } from 'lucide-react';
 
 interface StatsData {
@@ -504,8 +505,8 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Grille / Carrousel des KPI Majeurs (4 Cartes tactiles interactives) */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Grille / Carrousel des KPI Majeurs (5 Cartes tactiles interactives) */}
+        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {/* 1. Total Structures */}
           <button
             type="button"
@@ -620,6 +621,37 @@ export default function AdminDashboardPage() {
             </div>
             <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-purple-400 font-semibold group-hover:text-purple-300">
               <span>Voir le solde en stock</span>
+              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
+            </div>
+          </button>
+
+          {/* 5. VUE CARTOGRAPHIQUE (Couverture par Région Côte d'Ivoire) */}
+          <button
+            type="button"
+            onClick={() => router.push('/cartographie')}
+            className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-cyan-500/60 hover:bg-slate-900/90 shadow-lg relative overflow-hidden flex flex-col justify-between text-left transition-all duration-200 hover:-translate-y-1 active:scale-[0.98] group cursor-pointer"
+          >
+            <div className="flex items-center justify-between text-slate-400 mb-2 w-full">
+              <span className="text-xs font-semibold uppercase tracking-wider group-hover:text-cyan-400 transition">
+                Vue Cartographique
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center group-hover:scale-110 transition">
+                <MapPin className="w-4 h-4" />
+              </div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-black text-cyan-400 group-hover:text-cyan-300 transition">
+                33 <span className="text-xs font-semibold text-slate-400">Pôles</span>
+              </div>
+              <div className="mt-1.5 text-[11px] text-slate-400 flex items-center justify-between">
+                <span>Régions & Districts</span>
+                <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-bold border border-cyan-500/30">
+                  Côte d'Ivoire
+                </span>
+              </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-cyan-400 font-semibold group-hover:text-cyan-300">
+              <span>Ouvrir la carte CI</span>
               <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
             </div>
           </button>
