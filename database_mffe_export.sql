@@ -1312,5 +1312,5 @@ ALTER TABLE ONLY public.nature_entite
 -- PostgreSQL database dump complete
 --
 
-\unrestrict wqp0bfj8nlPuQ7cjP6c7xBcJXLCOeOjPuIwcET94b1e4G1vKuBdQWJYw2623jBe
+-- \unrestrict wqp0bfj8nlPuQ7cjP6c7xBcJXLCOeOjPuIwcET94b1e4G1vKuBdQWJYw2623jBe
 
