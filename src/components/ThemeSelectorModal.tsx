@@ -159,7 +159,7 @@ export default function ThemeSelectorModal() {
                     }`}
                     style={{
                       borderColor: isSelected ? pal.primaryHex : undefined,
-                      ringColor: isSelected ? pal.primaryHex : undefined,
+                      boxShadow: isSelected ? `0 0 0 1px ${pal.primaryHex}` : undefined,
                       backgroundColor: isSelected ? pal.badgeBg : undefined,
                     }}
                   >
