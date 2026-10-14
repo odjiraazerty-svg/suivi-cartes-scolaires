@@ -18,6 +18,7 @@ import {
   UserCheck,
   Send,
 } from 'lucide-react';
+import ThemeToggleButton from '@/components/ThemeToggleButton';
 
 export default function UserHomePage() {
   const router = useRouter();
@@ -93,6 +94,7 @@ export default function UserHomePage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggleButton variant="header" />
             <button
               onClick={fetchUserData}
               title="Rafraîchir"

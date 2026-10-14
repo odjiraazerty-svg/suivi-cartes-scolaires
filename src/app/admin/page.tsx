@@ -32,6 +32,7 @@ import {
   SlidersHorizontal,
   MapPin,
 } from 'lucide-react';
+import ThemeToggleButton from '@/components/ThemeToggleButton';
 
 interface StatsData {
   totalEntites: number;
@@ -454,6 +455,7 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggleButton variant="header" />
             <button
               onClick={fetchSessionAndStats}
               title="Rafraîchir"

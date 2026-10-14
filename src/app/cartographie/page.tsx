@@ -35,6 +35,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { COTE_D_IVOIRE_REGIONS, RegionVector } from '@/data/regionsCI';
+import ThemeToggleButton from '@/components/ThemeToggleButton';
 
 interface RegionalEntityDetail {
   id: string;
@@ -287,6 +288,8 @@ export default function CartographiePage() {
               <Download className="w-4 h-4 text-emerald-400" />
               <span className="hidden sm:inline">Export CSV</span>
             </button>
+
+            <ThemeToggleButton variant="header" />
 
             <button
               onClick={fetchCartoData}
