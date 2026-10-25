@@ -1332,8 +1332,8 @@ export default function AdminDashboardPage() {
       setUser(meData.user);
 
       // Charger les stats et l'activité du jour
-      const dateToUse = targetDate !== undefined ? targetDate : selectedDate;
-      const anneeToUse = (targetAnnee !== undefined ? targetAnnee : selectedAnneeScolaire).replace(/\s+/g, '');
+      const dateToUse = typeof targetDate === 'string' ? targetDate : selectedDate;
+      const anneeToUse = (typeof targetAnnee === 'string' ? targetAnnee : selectedAnneeScolaire).replace(/\s+/g, '');
       const params = new URLSearchParams();
       if (dateToUse) params.set('date', dateToUse);
       if (anneeToUse) params.set('annee_scolaire', anneeToUse);
@@ -1364,8 +1364,8 @@ export default function AdminDashboardPage() {
   const fetchActiviteJour = async (targetDate?: string, targetAnnee?: string) => {
     try {
       setLoadingActiviteJour(true);
-      const dateToUse = targetDate !== undefined ? targetDate : selectedDate;
-      const anneeToUse = (targetAnnee !== undefined ? targetAnnee : selectedAnneeScolaire).replace(/\s+/g, '');
+      const dateToUse = typeof targetDate === 'string' ? targetDate : selectedDate;
+      const anneeToUse = (typeof targetAnnee === 'string' ? targetAnnee : selectedAnneeScolaire).replace(/\s+/g, '');
       const params = new URLSearchParams();
       if (dateToUse) params.set('date', dateToUse);
       if (anneeToUse) params.set('annee_scolaire', anneeToUse);
@@ -1467,7 +1467,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-2">
             <ThemeToggleButton variant="header" />
             <button
-              onClick={fetchSessionAndStats}
+              onClick={() => fetchSessionAndStats()}
               title="Rafraîchir"
               className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition active:scale-95"
             >
