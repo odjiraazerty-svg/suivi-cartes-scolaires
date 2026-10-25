@@ -32,3 +32,19 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Fichiers de travail et scripts d'import locaux
+*.xlsx
+*.xls
+Correspondance_*
+SUIVI*
+Suivie*
+SUIVE*
+Receptions_Cartes_*
+MODELE ETAT LISTE.docx
+scripts/
+*.gif
+!public/**/*.gif
+
+# Conserver le modèle officiel Word requis pour la génération des exports
+!DISPONIBILITE DES CARTES SCOLAIRES.docx

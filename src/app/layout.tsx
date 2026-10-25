@@ -44,6 +44,7 @@ export default function RootLayout({
                     document.documentElement.setAttribute('data-theme-mode', mode);
                     if (conf.accent) document.documentElement.setAttribute('data-theme-accent', conf.accent);
                     if (conf.style) document.documentElement.setAttribute('data-theme-style', conf.style);
+                    if (conf.preset) document.documentElement.setAttribute('data-theme-preset', conf.preset);
                   }
                 } catch (e) {}
               })();

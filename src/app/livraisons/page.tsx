@@ -75,7 +75,7 @@ export default function LivraisonCartesPage() {
   const fetchEntites = async (query: string) => {
     try {
       setIsSearching(true);
-      const res = await fetch(`/api/entites?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/entites?q=${encodeURIComponent(query)}&all=true`);
       if (res.ok) {
         const data = await res.json();
         setEntites(data.entites || []);
@@ -184,7 +184,7 @@ export default function LivraisonCartesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 pb-20">
+    <div className="min-h-screen text-slate-100 pb-20 transition-colors duration-200">
       {/* Barre Supérieure Fixe */}
       <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-6">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
@@ -269,7 +269,7 @@ export default function LivraisonCartesPage() {
             </div>
           </div>
 
-          {/* 2. Structure* (Sélection parmi les 582 structures) */}
+          {/* 2. Structure* (Sélection parmi toutes les structures du référentiel) */}
           <div>
             <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
               <span className="flex items-center gap-1.5">

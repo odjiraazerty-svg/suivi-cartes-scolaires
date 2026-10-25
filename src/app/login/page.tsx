@@ -27,6 +27,12 @@ export default function LoginPage() {
   const [isLocalDev, setIsLocalDev] = useState(false);
 
   useEffect(() => {
+    // Réinitialiser le filtre sur l'année scolaire en cours par défaut après déconnexion ou retour sur login
+    try {
+      localStorage.removeItem('mffe_selected_annee_scolaire');
+      sessionStorage.removeItem('mffe_selected_annee_scolaire');
+    } catch (e) {}
+
     if (
       process.env.NODE_ENV === 'development' ||
       (typeof window !== 'undefined' &&
@@ -84,6 +90,12 @@ export default function LoginPage() {
         throw new Error(data.error || 'Identifiants incorrects');
       }
 
+      // Réinitialiser le filtre pour garantir l'affichage de l'année scolaire en cours
+      try {
+        localStorage.removeItem('mffe_selected_annee_scolaire');
+        sessionStorage.removeItem('mffe_selected_annee_scolaire');
+      } catch (e) {}
+
       setSuccess(`Bienvenue, ${data.user.name} ! Redirection en cours...`);
       setTimeout(() => {
         router.push(data.redirectTo || (data.user.role === 'ADMIN' ? '/admin' : '/user'));
@@ -140,6 +152,12 @@ export default function LoginPage() {
       if (!res.ok) {
         throw new Error(data.error || "Erreur lors de la création du compte.");
       }
+
+      // Réinitialiser le filtre pour garantir l'affichage de l'année scolaire en cours
+      try {
+        localStorage.removeItem('mffe_selected_annee_scolaire');
+        sessionStorage.removeItem('mffe_selected_annee_scolaire');
+      } catch (e) {}
 
       setSuccess(`Compte créé avec succès ! Bienvenue, ${data.user.name}. Redirection...`);
       setTimeout(() => {

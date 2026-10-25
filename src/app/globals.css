@@ -20,11 +20,11 @@ body {
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
 /* ==========================================================
-   THEME MODES (SOMBRE / CLAIR)
+   THEME MODES (SOMBRE / CLAIR DE BASE)
    ========================================================== */
 
 /* Mode Sombre (Défaut) */
@@ -37,7 +37,7 @@ html.dark body, html.theme-dark body {
   color: #f8fafc;
 }
 
-/* Mode Clair */
+/* Mode Clair (Fond Blanc & Épuré) */
 html.light, html.theme-light {
   color-scheme: light;
 }
@@ -47,13 +47,29 @@ html.light body, html.theme-light body {
   color: #0f172a !important;
 }
 
-html.light header {
-  background-color: rgba(255, 255, 255, 0.94) !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.06) !important;
+/* Surcharge absolue pour éliminer tout fond noir résiduel derrière les cartes */
+html.light .bg-\[\#070b14\],
+html.light [class*="bg-[#070b14]"] {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
 }
 
+/* Bannière d'en-tête en mode fond blanc : carte blanche lumineuse avec liseré d'accent */
+html.light .from-orange-600\/20.via-amber-600\/15 {
+  background-image: linear-gradient(to right, rgba(249, 115, 22, 0.12), rgba(245, 158, 11, 0.08), rgba(255, 255, 255, 0.95)) !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 4px 20px -2px rgba(249, 115, 22, 0.06) !important;
+}
+
+html.light header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 2px 12px -2px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Cartes et panneaux principaux */
 html.light .bg-slate-900,
+html.light .bg-slate-900\/95,
 html.light .bg-slate-900\/90,
 html.light .bg-slate-900\/80,
 html.light .bg-slate-900\/70,
@@ -61,42 +77,112 @@ html.light .bg-slate-900\/60 {
   background-color: #ffffff !important;
   color: #0f172a !important;
   border-color: #e2e8f0 !important;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px 0 rgba(15, 23, 42, 0.03) !important;
 }
 
+/* Conteneurs internes et surfaces secondaires */
 html.light .bg-slate-950,
 html.light .bg-slate-950\/80,
 html.light .bg-slate-950\/70,
 html.light .bg-slate-950\/60,
 html.light .bg-slate-950\/40 {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   color: #0f172a !important;
   border-color: #e2e8f0 !important;
 }
 
+/* Badges, boutons tertiaires et sous-blocs */
 html.light .bg-slate-800,
 html.light .bg-slate-800\/80,
 html.light .bg-slate-800\/60,
-html.light .bg-slate-800\/50 {
-  background-color: #e2e8f0 !important;
+html.light .bg-slate-800\/50,
+html.light .bg-slate-800\/40,
+html.light .bg-slate-800\/30 {
+  background-color: #f1f5f9 !important;
   color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Champs de saisie, sélecteurs et textareas */
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
   border-color: #cbd5e1 !important;
 }
 
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: var(--primary-accent) !important;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15) !important;
+}
+
+/* Tableaux */
+html.light table thead tr {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light table tbody tr {
+  border-color: #f1f5f9 !important;
+}
+
+html.light table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+html.light table tfoot tr {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .divide-slate-800,
+html.light .divide-slate-800\/60,
+html.light .divide-slate-800\/80 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Voiles d'arrière-plan de modales (Backdrop) */
+html.light .fixed.inset-0.bg-slate-950\/90,
+html.light .fixed.inset-0.bg-slate-950\/85,
+html.light .fixed.inset-0.bg-slate-950\/80,
+html.light .fixed.inset-0.bg-slate-950\/70,
+html.light .fixed.inset-0.bg-black\/80,
+html.light .fixed.inset-0.bg-black\/75 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+/* Textes sombres contrastés */
 html.light .text-white {
   color: #0f172a !important;
 }
 
 html.light .text-slate-100,
-html.light .text-slate-200,
-html.light .text-slate-300 {
+html.light .text-slate-200 {
   color: #1e293b !important;
+}
+
+html.light .text-slate-300 {
+  color: #334155 !important;
 }
 
 html.light .text-slate-400 {
   color: #64748b !important;
 }
 
+html.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Bordures douces */
 html.light .border-slate-800,
 html.light .border-slate-800\/80,
 html.light .border-slate-800\/90,
@@ -107,14 +193,385 @@ html.light .border-slate-700\/60 {
   border-color: #e2e8f0 !important;
 }
 
+/* Badges KPI & chiffres en mode fond blanc */
+html.light .text-emerald-400 {
+  color: #059669 !important;
+}
+
+html.light .text-orange-400 {
+  color: #ea580c !important;
+}
+
+html.light .text-orange-300 {
+  color: #c2410c !important;
+}
+
+html.light .text-cyan-300,
+html.light .text-cyan-400,
+html.light [class*="text-cyan-300"],
+html.light [class*="text-cyan-400"] {
+  color: #0891b2 !important;
+}
+
+html.light .text-purple-300,
+html.light .text-purple-400 {
+  color: #7c3aed !important;
+}
+
+html.light .text-blue-400 {
+  color: #2563eb !important;
+}
+
+html.light .bg-cyan-500\/10,
+html.light .bg-cyan-500\/15 {
+  background-color: #ecfeff !important;
+  color: #0891b2 !important;
+  border-color: #a5f3fc !important;
+}
+
+html.light .bg-emerald-500\/10,
+html.light .bg-emerald-500\/15 {
+  background-color: #ecfdf5 !important;
+  color: #059669 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light .bg-orange-500\/10,
+html.light .bg-orange-500\/15 {
+  background-color: #fff7ed !important;
+  color: #ea580c !important;
+  border-color: #fed7aa !important;
+}
+
+html.light .bg-purple-500\/10,
+html.light .bg-purple-500\/15 {
+  background-color: #faf5ff !important;
+  color: #7c3aed !important;
+  border-color: #e9d5ff !important;
+}
+
+html.light .bg-blue-500\/10,
+html.light .bg-blue-500\/15 {
+  background-color: #eff6ff !important;
+  color: #2563eb !important;
+  border-color: #bfdbfe !important;
+}
+
+/* Amélioration du contraste élevé en mode clair (Émeraude & Ambre) */
+html.light .text-emerald-300,
+html.light [class*="text-emerald-300"] {
+  color: #047857 !important;
+}
+
+html.light .bg-emerald-500\/20,
+html.light [class*="bg-emerald-500/20"] {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+  border-color: #6ee7b7 !important;
+}
+
+html.light .border-emerald-500\/30,
+html.light [class*="border-emerald-500/30"] {
+  border-color: #86efac !important;
+}
+
+html.light .text-amber-200,
+html.light .text-amber-300,
+html.light [class*="text-amber-200"],
+html.light [class*="text-amber-300"] {
+  color: #78350f !important;
+}
+
+html.light .text-amber-400,
+html.light [class*="text-amber-400"] {
+  color: #b45309 !important;
+}
+
+html.light .bg-amber-500\/10,
+html.light .bg-amber-500\/15,
+html.light .bg-amber-500\/20,
+html.light .bg-amber-500\/25,
+html.light [class*="bg-amber-500/"] {
+  background-color: #fef3c7 !important;
+  color: #78350f !important;
+  border-color: #fcd34d !important;
+}
+
+html.light .border-amber-500\/25,
+html.light .border-amber-500\/30,
+html.light [class*="border-amber-500/"] {
+  border-color: #fcd34d !important;
+}
+
+/* Barre de navigation inférieure mobile en fond blanc */
+html.light nav.fixed.bottom-0 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 -4px 16px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
 /* ==========================================================
-   PALETTES D'ACCENT COULEUR DYNAMIQUES
+   LES 9 COMBINAISONS THÉMATIQUES CLÉS EN MAIN (PRESETS)
+   ========================================================== */
+
+/* 1. SAPHIR EXÉCUTIF (Bleu Roi & Cyan Boréal sur Nuit Océane) */
+[data-theme-preset="saphir-executif"].dark body,
+[data-theme-preset="saphir-executif"].theme-dark body {
+  background-color: #060d1f !important;
+}
+[data-theme-preset="saphir-executif"] .bg-slate-900,
+[data-theme-preset="saphir-executif"] .bg-slate-900\/90,
+[data-theme-preset="saphir-executif"] .bg-slate-900\/80,
+[data-theme-preset="saphir-executif"] .bg-slate-900\/70 {
+  background-color: #0c1a38 !important;
+  border-color: #1a2f5a !important;
+}
+[data-theme-preset="saphir-executif"] .bg-slate-950,
+[data-theme-preset="saphir-executif"] .bg-slate-950\/80,
+[data-theme-preset="saphir-executif"] .bg-slate-950\/70,
+[data-theme-preset="saphir-executif"] .bg-slate-950\/60 {
+  background-color: #071026 !important;
+  border-color: #172d5c !important;
+}
+[data-theme-preset="saphir-executif"] .bg-slate-800,
+[data-theme-preset="saphir-executif"] .bg-slate-800\/80 {
+  background-color: #142852 !important;
+  border-color: #1e3a75 !important;
+}
+[data-theme-preset="saphir-executif"] .border-slate-800,
+[data-theme-preset="saphir-executif"] .border-slate-700 {
+  border-color: #1a3363 !important;
+}
+
+/* 2. ÉMERAUDE & ESPÉRANCE (Vert Jade & Menthe sur Canopée Nocturne) */
+[data-theme-preset="emeraude-prestige"].dark body,
+[data-theme-preset="emeraude-prestige"].theme-dark body {
+  background-color: #03140e !important;
+}
+[data-theme-preset="emeraude-prestige"] .bg-slate-900,
+[data-theme-preset="emeraude-prestige"] .bg-slate-900\/90,
+[data-theme-preset="emeraude-prestige"] .bg-slate-900\/80,
+[data-theme-preset="emeraude-prestige"] .bg-slate-900\/70 {
+  background-color: #08241b !important;
+  border-color: #104635 !important;
+}
+[data-theme-preset="emeraude-prestige"] .bg-slate-950,
+[data-theme-preset="emeraude-prestige"] .bg-slate-950\/80,
+[data-theme-preset="emeraude-prestige"] .bg-slate-950\/70,
+[data-theme-preset="emeraude-prestige"] .bg-slate-950\/60 {
+  background-color: #041a13 !important;
+  border-color: #0f4031 !important;
+}
+[data-theme-preset="emeraude-prestige"] .bg-slate-800,
+[data-theme-preset="emeraude-prestige"] .bg-slate-800\/80 {
+  background-color: #0e3b2d !important;
+  border-color: #165642 !important;
+}
+[data-theme-preset="emeraude-prestige"] .border-slate-800,
+[data-theme-preset="emeraude-prestige"] .border-slate-700 {
+  border-color: #0f4031 !important;
+}
+
+/* 3. AMÉTHYSTE & NUIT STELLAIRE (Violet Impérial & Rose Quartz sur Velours Sombre) */
+[data-theme-preset="amethyste-luxe"].dark body,
+[data-theme-preset="amethyste-luxe"].theme-dark body {
+  background-color: #0d0818 !important;
+}
+[data-theme-preset="amethyste-luxe"] .bg-slate-900,
+[data-theme-preset="amethyste-luxe"] .bg-slate-900\/90,
+[data-theme-preset="amethyste-luxe"] .bg-slate-900\/80,
+[data-theme-preset="amethyste-luxe"] .bg-slate-900\/70 {
+  background-color: #18102b !important;
+  border-color: #312154 !important;
+}
+[data-theme-preset="amethyste-luxe"] .bg-slate-950,
+[data-theme-preset="amethyste-luxe"] .bg-slate-950\/80,
+[data-theme-preset="amethyste-luxe"] .bg-slate-950\/70,
+[data-theme-preset="amethyste-luxe"] .bg-slate-950\/60 {
+  background-color: #100a20 !important;
+  border-color: #2b1d4c !important;
+}
+[data-theme-preset="amethyste-luxe"] .bg-slate-800,
+[data-theme-preset="amethyste-luxe"] .bg-slate-800\/80 {
+  background-color: #251744 !important;
+  border-color: #3d276b !important;
+}
+[data-theme-preset="amethyste-luxe"] .border-slate-800,
+[data-theme-preset="amethyste-luxe"] .border-slate-700 {
+  border-color: #2b1d4c !important;
+}
+
+/* 4. TERRE D’IVOIRE & CACAO (Ambre Doré & Cuivre sur Brun Carbone) */
+[data-theme-preset="ambre-sahelien"].dark body,
+[data-theme-preset="ambre-sahelien"].theme-dark body {
+  background-color: #100b08 !important;
+}
+[data-theme-preset="ambre-sahelien"] .bg-slate-900,
+[data-theme-preset="ambre-sahelien"] .bg-slate-900\/90,
+[data-theme-preset="ambre-sahelien"] .bg-slate-900\/80,
+[data-theme-preset="ambre-sahelien"] .bg-slate-900\/70 {
+  background-color: #1e140d !important;
+  border-color: #3d281a !important;
+}
+[data-theme-preset="ambre-sahelien"] .bg-slate-950,
+[data-theme-preset="ambre-sahelien"] .bg-slate-950\/80,
+[data-theme-preset="ambre-sahelien"] .bg-slate-950\/70,
+[data-theme-preset="ambre-sahelien"] .bg-slate-950\/60 {
+  background-color: #140d09 !important;
+  border-color: #382416 !important;
+}
+[data-theme-preset="ambre-sahelien"] .bg-slate-800,
+[data-theme-preset="ambre-sahelien"] .bg-slate-800\/80 {
+  background-color: #2c1d13 !important;
+  border-color: #4c311f !important;
+}
+[data-theme-preset="ambre-sahelien"] .border-slate-800,
+[data-theme-preset="ambre-sahelien"] .border-slate-700 {
+  border-color: #382416 !important;
+}
+
+/* 5. TITANE & CYBERSPACE (Anthracite Graphite & Cyan Électrique) */
+[data-theme-preset="titane-futur"].dark body,
+[data-theme-preset="titane-futur"].theme-dark body {
+  background-color: #0a0e16 !important;
+}
+[data-theme-preset="titane-futur"] .bg-slate-900,
+[data-theme-preset="titane-futur"] .bg-slate-900\/90,
+[data-theme-preset="titane-futur"] .bg-slate-900\/80,
+[data-theme-preset="titane-futur"] .bg-slate-900\/70 {
+  background-color: #111824 !important;
+  border-color: #1e293b !important;
+}
+[data-theme-preset="titane-futur"] .bg-slate-950,
+[data-theme-preset="titane-futur"] .bg-slate-950\/80,
+[data-theme-preset="titane-futur"] .bg-slate-950\/70,
+[data-theme-preset="titane-futur"] .bg-slate-950\/60 {
+  background-color: #0c121d !important;
+  border-color: #1e293b !important;
+}
+[data-theme-preset="titane-futur"] .bg-slate-800,
+[data-theme-preset="titane-futur"] .bg-slate-800\/80 {
+  background-color: #1a2333 !important;
+  border-color: #28364d !important;
+}
+[data-theme-preset="titane-futur"] .border-slate-800,
+[data-theme-preset="titane-futur"] .border-slate-700 {
+  border-color: #1e293b !important;
+}
+
+/* 6. OLED NOIR ABSOLU (Noir 100% avec liserés or néon) */
+[data-theme-preset="noir-oled"].dark body,
+[data-theme-preset="noir-oled"].theme-dark body {
+  background-color: #000000 !important;
+}
+[data-theme-preset="noir-oled"] .bg-slate-900,
+[data-theme-preset="noir-oled"] .bg-slate-900\/90,
+[data-theme-preset="noir-oled"] .bg-slate-900\/80,
+[data-theme-preset="noir-oled"] .bg-slate-900\/70 {
+  background-color: #0a0a0a !important;
+  border-color: #222222 !important;
+}
+[data-theme-preset="noir-oled"] .bg-slate-950,
+[data-theme-preset="noir-oled"] .bg-slate-950\/80,
+[data-theme-preset="noir-oled"] .bg-slate-950\/70,
+[data-theme-preset="noir-oled"] .bg-slate-950\/60 {
+  background-color: #050505 !important;
+  border-color: #1a1a1a !important;
+}
+[data-theme-preset="noir-oled"] .bg-slate-800,
+[data-theme-preset="noir-oled"] .bg-slate-800\/80 {
+  background-color: #141414 !important;
+  border-color: #2a2a2a !important;
+}
+[data-theme-preset="noir-oled"] .border-slate-800,
+[data-theme-preset="noir-oled"] .border-slate-700 {
+  border-color: #222222 !important;
+}
+
+/* 7. LAGON BORÉAL GIVRÉ (Clair Boréal / Azur) */
+[data-theme-preset="azur-boreale"].light body,
+[data-theme-preset="azur-boreale"].theme-light body {
+  background-color: #f0f7ff !important;
+}
+[data-theme-preset="azur-boreale"] .bg-slate-900,
+[data-theme-preset="azur-boreale"] .bg-slate-900\/90,
+[data-theme-preset="azur-boreale"] .bg-slate-900\/80,
+[data-theme-preset="azur-boreale"] .bg-slate-900\/70,
+[data-theme-preset="azur-boreale"] .bg-slate-900\/60 {
+  background-color: #ffffff !important;
+  border-color: #dbeafe !important;
+  box-shadow: 0 4px 20px -2px rgba(2, 132, 199, 0.08) !important;
+}
+[data-theme-preset="azur-boreale"] .bg-slate-950,
+[data-theme-preset="azur-boreale"] .bg-slate-950\/80 {
+  background-color: #e6f1fc !important;
+  border-color: #dbeafe !important;
+}
+[data-theme-preset="azur-boreale"] .bg-slate-800,
+[data-theme-preset="azur-boreale"] .bg-slate-800\/80 {
+  background-color: #dbeafe !important;
+  border-color: #bfdbfe !important;
+}
+
+/* 8. PURE CLARTÉ IVOIRE (Clair Institutionnel MFFE) */
+[data-theme-preset="lumiere-ivoire"].light body,
+[data-theme-preset="lumiere-ivoire"].theme-light body {
+  background-color: #f8fafc !important;
+}
+[data-theme-preset="lumiere-ivoire"] .bg-slate-900,
+[data-theme-preset="lumiere-ivoire"] .bg-slate-900\/90,
+[data-theme-preset="lumiere-ivoire"] .bg-slate-900\/80,
+[data-theme-preset="lumiere-ivoire"] .bg-slate-900\/70,
+[data-theme-preset="lumiere-ivoire"] .bg-slate-900\/60 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px 0 rgba(15, 23, 42, 0.03) !important;
+}
+[data-theme-preset="lumiere-ivoire"] .bg-slate-950,
+[data-theme-preset="lumiere-ivoire"] .bg-slate-950\/80,
+[data-theme-preset="lumiere-ivoire"] .bg-slate-950\/70 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+[data-theme-preset="lumiere-ivoire"] .bg-slate-800,
+[data-theme-preset="lumiere-ivoire"] .bg-slate-800\/80 {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* 9. EXECUTIVE WHITE & TITANE (100% Blanc Pur Minimaliste) */
+[data-theme-preset="executive-white"].light body,
+[data-theme-preset="executive-white"].theme-light body {
+  background-color: #f8fafc !important;
+}
+[data-theme-preset="executive-white"] .bg-slate-900,
+[data-theme-preset="executive-white"] .bg-slate-900\/90,
+[data-theme-preset="executive-white"] .bg-slate-900\/80,
+[data-theme-preset="executive-white"] .bg-slate-900\/70,
+[data-theme-preset="executive-white"] .bg-slate-900\/60 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px 0 rgba(15, 23, 42, 0.03) !important;
+}
+[data-theme-preset="executive-white"] .bg-slate-950,
+[data-theme-preset="executive-white"] .bg-slate-950\/80 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+[data-theme-preset="executive-white"] .bg-slate-800,
+[data-theme-preset="executive-white"] .bg-slate-800\/80 {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* ==========================================================
+   PALETTES D'ACCENT COULEUR DYNAMIQUES & DÉGRADÉS HARMONIEUX
    ========================================================== */
 
 /* 1. Émeraude */
 [data-theme-accent="emerald"] {
-  --primary-accent: #10b981;
-  --primary-glow: rgba(16, 185, 129, 0.4);
+  --primary-accent: #059669;
+  --primary-glow: rgba(5, 150, 105, 0.4);
 }
 [data-theme-accent="emerald"] .from-orange-600,
 [data-theme-accent="emerald"] .from-orange-500 {
@@ -124,7 +581,7 @@ html.light .border-slate-700\/60 {
 }
 [data-theme-accent="emerald"] .to-amber-600,
 [data-theme-accent="emerald"] .to-orange-500 {
-  --tw-gradient-to: #0d9488 var(--tw-gradient-to-position) !important;
+  --tw-gradient-to: #10b981 var(--tw-gradient-to-position) !important;
 }
 [data-theme-accent="emerald"] .text-orange-400,
 [data-theme-accent="emerald"] .text-orange-500 {
@@ -135,13 +592,13 @@ html.light .border-slate-700\/60 {
   border-color: #10b981 !important;
 }
 [data-theme-accent="emerald"] .bg-orange-500 {
-  background-color: #10b981 !important;
+  background-color: #059669 !important;
 }
 
-/* 2. Bleu */
+/* 2. Bleu Saphir */
 [data-theme-accent="blue"] {
-  --primary-accent: #3b82f6;
-  --primary-glow: rgba(59, 130, 246, 0.4);
+  --primary-accent: #2563eb;
+  --primary-glow: rgba(37, 99, 235, 0.4);
 }
 [data-theme-accent="blue"] .from-orange-600,
 [data-theme-accent="blue"] .from-orange-500 {
@@ -162,13 +619,40 @@ html.light .border-slate-700\/60 {
   border-color: #3b82f6 !important;
 }
 [data-theme-accent="blue"] .bg-orange-500 {
-  background-color: #3b82f6 !important;
+  background-color: #2563eb !important;
 }
 
-/* 3. Violet */
+/* 3. Cyan Boréal High-Tech */
+[data-theme-accent="cyan"] {
+  --primary-accent: #0ea5e9;
+  --primary-glow: rgba(14, 165, 233, 0.4);
+}
+[data-theme-accent="cyan"] .from-orange-600,
+[data-theme-accent="cyan"] .from-orange-500 {
+  --tw-gradient-from: #0ea5e9 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(14 165 233 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+[data-theme-accent="cyan"] .to-amber-600,
+[data-theme-accent="cyan"] .to-orange-500 {
+  --tw-gradient-to: #38bdf8 var(--tw-gradient-to-position) !important;
+}
+[data-theme-accent="cyan"] .text-orange-400,
+[data-theme-accent="cyan"] .text-orange-500 {
+  color: #38bdf8 !important;
+}
+[data-theme-accent="cyan"] .border-orange-500,
+[data-theme-accent="cyan"] .border-orange-400 {
+  border-color: #0ea5e9 !important;
+}
+[data-theme-accent="cyan"] .bg-orange-500 {
+  background-color: #0ea5e9 !important;
+}
+
+/* 4. Violet Améthyste */
 [data-theme-accent="purple"] {
-  --primary-accent: #8b5cf6;
-  --primary-glow: rgba(139, 92, 246, 0.4);
+  --primary-accent: #7c3aed;
+  --primary-glow: rgba(124, 58, 237, 0.4);
 }
 [data-theme-accent="purple"] .from-orange-600,
 [data-theme-accent="purple"] .from-orange-500 {
@@ -178,24 +662,24 @@ html.light .border-slate-700\/60 {
 }
 [data-theme-accent="purple"] .to-amber-600,
 [data-theme-accent="purple"] .to-orange-500 {
-  --tw-gradient-to: #4f46e5 var(--tw-gradient-to-position) !important;
+  --tw-gradient-to: #ec4899 var(--tw-gradient-to-position) !important;
 }
 [data-theme-accent="purple"] .text-orange-400,
 [data-theme-accent="purple"] .text-orange-500 {
-  color: #8b5cf6 !important;
+  color: #c084fc !important;
 }
 [data-theme-accent="purple"] .border-orange-500,
 [data-theme-accent="purple"] .border-orange-400 {
-  border-color: #8b5cf6 !important;
+  border-color: #7c3aed !important;
 }
 [data-theme-accent="purple"] .bg-orange-500 {
-  background-color: #8b5cf6 !important;
+  background-color: #7c3aed !important;
 }
 
-/* 4. Ambre / Or */
+/* 5. Ambre Sahélien & Cuivre */
 [data-theme-accent="amber"] {
-  --primary-accent: #f59e0b;
-  --primary-glow: rgba(245, 158, 11, 0.4);
+  --primary-accent: #d97706;
+  --primary-glow: rgba(217, 119, 6, 0.4);
 }
 [data-theme-accent="amber"] .from-orange-600,
 [data-theme-accent="amber"] .from-orange-500 {
@@ -205,24 +689,24 @@ html.light .border-slate-700\/60 {
 }
 [data-theme-accent="amber"] .to-amber-600,
 [data-theme-accent="amber"] .to-orange-500 {
-  --tw-gradient-to: #ca8a04 var(--tw-gradient-to-position) !important;
+  --tw-gradient-to: #ea580c var(--tw-gradient-to-position) !important;
 }
 [data-theme-accent="amber"] .text-orange-400,
 [data-theme-accent="amber"] .text-orange-500 {
-  color: #f59e0b !important;
+  color: #fbbf24 !important;
 }
 [data-theme-accent="amber"] .border-orange-500,
 [data-theme-accent="amber"] .border-orange-400 {
-  border-color: #f59e0b !important;
+  border-color: #d97706 !important;
 }
 [data-theme-accent="amber"] .bg-orange-500 {
-  background-color: #f59e0b !important;
+  background-color: #d97706 !important;
 }
 
-/* 5. Rose / Rubis */
+/* 6. Rose Rubis */
 [data-theme-accent="rose"] {
-  --primary-accent: #f43f5e;
-  --primary-glow: rgba(244, 63, 94, 0.4);
+  --primary-accent: #e11d48;
+  --primary-glow: rgba(225, 29, 72, 0.4);
 }
 [data-theme-accent="rose"] .from-orange-600,
 [data-theme-accent="rose"] .from-orange-500 {
@@ -232,18 +716,45 @@ html.light .border-slate-700\/60 {
 }
 [data-theme-accent="rose"] .to-amber-600,
 [data-theme-accent="rose"] .to-orange-500 {
-  --tw-gradient-to: #db2777 var(--tw-gradient-to-position) !important;
+  --tw-gradient-to: #f43f5e var(--tw-gradient-to-position) !important;
 }
 [data-theme-accent="rose"] .text-orange-400,
 [data-theme-accent="rose"] .text-orange-500 {
-  color: #f43f5e !important;
+  color: #fb7185 !important;
 }
 [data-theme-accent="rose"] .border-orange-500,
 [data-theme-accent="rose"] .border-orange-400 {
-  border-color: #f43f5e !important;
+  border-color: #e11d48 !important;
 }
 [data-theme-accent="rose"] .bg-orange-500 {
-  background-color: #f43f5e !important;
+  background-color: #e11d48 !important;
+}
+
+/* 7. Titane & Argent Neutre */
+[data-theme-accent="slate"] {
+  --primary-accent: #64748b;
+  --primary-glow: rgba(100, 116, 139, 0.3);
+}
+[data-theme-accent="slate"] .from-orange-600,
+[data-theme-accent="slate"] .from-orange-500 {
+  --tw-gradient-from: #475569 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(71 85 105 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+[data-theme-accent="slate"] .to-amber-600,
+[data-theme-accent="slate"] .to-orange-500 {
+  --tw-gradient-to: #94a3b8 var(--tw-gradient-to-position) !important;
+}
+[data-theme-accent="slate"] .text-orange-400,
+[data-theme-accent="slate"] .text-orange-500 {
+  color: #cbd5e1 !important;
+}
+[data-theme-accent="slate"] .border-orange-500,
+[data-theme-accent="slate"] .border-orange-400 {
+  border-color: #64748b !important;
+}
+[data-theme-accent="slate"] .bg-orange-500 {
+  background-color: #475569 !important;
 }
 
 /* Scrollbar discrète */

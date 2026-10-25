@@ -17,6 +17,7 @@ import {
   Building2,
   TrendingUp,
   Download,
+  Upload,
   Eye,
   SlidersHorizontal,
   ChevronRight,
@@ -36,6 +37,7 @@ import {
 } from 'lucide-react';
 import { COTE_D_IVOIRE_REGIONS, RegionVector } from '@/data/regionsCI';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
+import { useTheme } from '@/context/ThemeContext';
 
 interface RegionalEntityDetail {
   id: string;
@@ -82,6 +84,7 @@ interface CartoData {
 
 export default function CartographiePage() {
   const router = useRouter();
+  const { resolvedMode } = useTheme();
   const [data, setData] = useState<CartoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +104,11 @@ export default function CartographiePage() {
   const [showLabels, setShowLabels] = useState(true);
   const [showCardCounts, setShowCardCounts] = useState(true);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+
+  // Synchronisation du thème de la carte avec le thème global actif
+  useEffect(() => {
+    setMapTheme(resolvedMode === 'light' ? 'clair' : 'sombre');
+  }, [resolvedMode]);
 
   const fetchCartoData = async () => {
     try {
@@ -225,7 +233,7 @@ export default function CartographiePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 pb-20 selection:bg-orange-500/30 selection:text-orange-200">
+    <div className="min-h-screen text-slate-100 pb-20 selection:bg-orange-500/30 selection:text-orange-200 transition-colors duration-200">
       {/* 1. BARRE INSTITUTIONNELLE SUPÉRIEURE */}
       <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800/80 px-4 py-3 sm:px-6 shadow-xl">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -285,7 +293,7 @@ export default function CartographiePage() {
               className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/80 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95"
               title="Exporter en CSV"
             >
-              <Download className="w-4 h-4 text-emerald-400" />
+              <Upload className="w-4 h-4 text-emerald-400" />
               <span className="hidden sm:inline">Export CSV</span>
             </button>
 
@@ -360,7 +368,7 @@ export default function CartographiePage() {
           </div>
 
           {/* Régions Dotées */}
-          <div className="col-span-2 sm:col-span-4 lg:col-span-1 p-3.5 rounded-2xl bg-gradient-to-br from-slate-900/90 to-slate-800/70 border border-cyan-500/30 shadow-md">
+          <div className="col-span-2 sm:col-span-4 lg:col-span-1 p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/90 shadow-md">
             <div className="flex items-center justify-between text-slate-400 mb-1">
               <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400">Couverture CI</span>
               <MapPin className="w-4 h-4 text-cyan-400" />
@@ -369,7 +377,7 @@ export default function CartographiePage() {
               {data?.summary.regionsDotees ?? 0}{' '}
               <span className="text-xs text-slate-400 font-normal">/ {data?.summary.regionsTotal ?? 33} DR</span>
             </div>
-            <p className="text-[10px] text-cyan-300/80 mt-0.5">
+            <p className="text-[10px] text-cyan-400/90 mt-0.5">
               {data?.summary.tauxCouvertureTerritoriale ?? 0}% du territoire doté
             </p>
           </div>
@@ -777,8 +785,7 @@ export default function CartographiePage() {
                             }}
                           >
                             <title>
-                              {vec.shapeName} ({vec.chefLieu})
-                              {regData ? ` - Reçu: ${regData.totalRecu} | Distribué: ${regData.totalDistribue}` : ''}
+                              {`${vec.shapeName} (${vec.chefLieu})${regData ? ` - Reçu: ${regData.totalRecu} | Distribué: ${regData.totalDistribue}` : ''}`}
                             </title>
                           </path>
                         );

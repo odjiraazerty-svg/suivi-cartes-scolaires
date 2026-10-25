@@ -6,19 +6,27 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '200', 10);
+    const anneeParam = searchParams.get('annee_scolaire')?.trim() || null;
+    const cleanAnnee = anneeParam ? anneeParam.replace(/\s+/g, '') : null;
 
-    const receptions = await query(
-      `SELECT r.id, r.id_entite, r.date_reception, r.quantite_recue, r.annee_scolaire, 
+    let sql = `
+      SELECT r.id, r.id_entite, r.date_reception, r.quantite_recue, r.annee_scolaire, 
               r.reference_bordereau, r.receptionnaire_nom, r.observations, r.created_at, 
               e.nom as nom_entite, e.sigle, e.localisation,
               u.name as auteur_nom
        FROM reception_carte r
        JOIN entite e ON r.id_entite = e.id_entite
        LEFT JOIN public."user" u ON r.id_user = u.id
-       ORDER BY r.created_at DESC
-       LIMIT $1`,
-      [limit]
-    );
+    `;
+    const params: any[] = [];
+    if (anneeParam) {
+      params.push(anneeParam, cleanAnnee);
+      sql += ` WHERE (r.annee_scolaire = $1 OR replace(r.annee_scolaire, ' ', '') = $2)`;
+    }
+    sql += ` ORDER BY r.created_at DESC LIMIT $${params.length + 1}`;
+    params.push(limit);
+
+    const receptions = await query(sql, params);
 
     return NextResponse.json({ success: true, receptions });
   } catch (error: any) {

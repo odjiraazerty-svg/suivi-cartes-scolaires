@@ -7,6 +7,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '30', 10);
     const entiteId = searchParams.get('id_entite');
+    const anneeParam = searchParams.get('annee_scolaire')?.trim() || null;
+    const cleanAnnee = anneeParam ? anneeParam.replace(/\s+/g, '') : null;
 
     let sql = `
       SELECT l.id, l.id_entite, l.date_livraison, l.quantite_livree, l.annee_scolaire, 
@@ -17,12 +19,18 @@ export async function GET(request: Request) {
       FROM livraison_carte l
       JOIN entite e ON l.id_entite = e.id_entite
       LEFT JOIN public."user" u ON l.id_user = u.id
+      WHERE 1=1
     `;
     const params: any[] = [];
 
     if (entiteId) {
       params.push(entiteId);
-      sql += ` WHERE l.id_entite = $1`;
+      sql += ` AND l.id_entite = $${params.length}`;
+    }
+
+    if (anneeParam) {
+      params.push(anneeParam, cleanAnnee);
+      sql += ` AND (l.annee_scolaire = $${params.length - 1} OR replace(l.annee_scolaire, ' ', '') = $${params.length})`;
     }
 
     sql += ` ORDER BY l.created_at DESC LIMIT $${params.length + 1}`;

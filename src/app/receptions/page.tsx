@@ -31,11 +31,12 @@ interface EntiteOption {
 export default function ReceptionCartesPage() {
   const router = useRouter();
 
-  // Valeurs par défaut requises
+  // Valeurs par défaut requises (Date fixée par défaut au 20/10/2026)
+  const defaultDateReception = '2026-10-20';
   const todayDate = new Date().toISOString().split('T')[0];
   const [anneeAcademique, setAnneeAcademique] = useState('2026-2027');
   const [selectedEntite, setSelectedEntite] = useState<EntiteOption | null>(null);
-  const [dateReception, setDateReception] = useState(todayDate);
+  const [dateReception, setDateReception] = useState(defaultDateReception);
   const [quantite, setQuantite] = useState<string>('');
   const [observation, setObservation] = useState('');
 
@@ -60,7 +61,7 @@ export default function ReceptionCartesPage() {
   const fetchEntites = async (query: string) => {
     try {
       setIsSearching(true);
-      const res = await fetch(`/api/entites?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/entites?q=${encodeURIComponent(query)}&all=true`);
       if (res.ok) {
         const data = await res.json();
         setEntites(data.entites || []);
@@ -147,7 +148,7 @@ export default function ReceptionCartesPage() {
       setQuantite('');
       setObservation('');
       setSelectedEntite(null);
-      setDateReception(todayDate);
+      setDateReception(defaultDateReception);
 
       // Mettre à jour la liste des dernières réceptions
       fetchRecentReceptions();
@@ -159,7 +160,7 @@ export default function ReceptionCartesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 pb-20">
+    <div className="min-h-screen text-slate-100 pb-20 transition-colors duration-200">
       {/* Barre Supérieure Fixe */}
       <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-6">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
@@ -244,7 +245,7 @@ export default function ReceptionCartesPage() {
             </div>
           </div>
 
-          {/* 2. Structure* (Sélection parmi les 582 structures avec recherche tactile) */}
+          {/* 2. Structure* (Sélection parmi toutes les structures avec recherche tactile) */}
           <div>
             <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
@@ -335,14 +336,25 @@ export default function ReceptionCartesPage() {
             )}
           </div>
 
-          {/* 3. Date de Réception* (Par défaut date du jour) */}
+          {/* 3. Date de Réception* (Par défaut 20/10/2026) */}
           <div>
             <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-orange-400" />
                 <span>Date de Réception *</span>
               </span>
-              <span className="text-[11px] text-orange-400 font-semibold lowercase">requis</span>
+              <div className="flex items-center gap-2">
+                {dateReception !== defaultDateReception && (
+                  <button
+                    type="button"
+                    onClick={() => setDateReception(defaultDateReception)}
+                    className="text-[10px] text-orange-400 hover:text-orange-300 font-semibold underline active:scale-95 transition"
+                  >
+                    Remettre au 20/10/2026
+                  </button>
+                )}
+                <span className="text-[11px] text-orange-400 font-semibold lowercase">requis</span>
+              </div>
             </label>
             <input
               type="date"
