@@ -40,11 +40,13 @@ import {
   Download,
   FileText,
   Printer,
+  Share2,
 } from 'lucide-react';
 import * as xlsx from 'xlsx';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
 import ImportActiviteModal from '@/components/ImportActiviteModal';
 import ExportDisponibiliteModal from '@/components/ExportDisponibiliteModal';
+import PointDuJourModal from '@/components/PointDuJourModal';
 import {
   STRUCTURE_NATURES,
   OFFICIAL_REGIONAL_DIRECTIONS,
@@ -249,6 +251,8 @@ export default function AdminDashboardPage() {
   const [showDispoModal, setShowDispoModal] = useState<boolean>(false);
   const [dispoInitialNature, setDispoInitialNature] = useState<string>('ALL');
   const [isExportingDispo, setIsExportingDispo] = useState<boolean>(false);
+  // Modale Partager le point du jour (format image)
+  const [showPointDuJourModal, setShowPointDuJourModal] = useState<boolean>(false);
 
   // Choix de l'année scolaire (Dynamique selon le calendrier officiel MFFE - 2026-2027 en cours)
   const anneesScolairesDisponibles = useMemo(() => getAvailableSchoolYears(), []);
@@ -1769,6 +1773,17 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  {/* Bouton Partager le point du jour (Format Image) */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPointDuJourModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-sm"
+                    title="Partager le point du jour au format image officiel"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Partager le point du jour</span>
+                  </button>
+
                   <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 rounded-xl px-2.5 py-1 text-xs">
                     <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <input
@@ -4985,6 +5000,14 @@ export default function AdminDashboardPage() {
         onError={(err) => {
           setFeedbackMessage({ type: 'error', text: err });
         }}
+      />
+
+      {/* Modale Partager le Point du Jour (Format Image) */}
+      <PointDuJourModal
+        isOpen={showPointDuJourModal}
+        onClose={() => setShowPointDuJourModal(false)}
+        initialDate={selectedDate}
+        anneeScolaire={selectedAnneeScolaire.replace(/\s+/g, '')}
       />
     </div>
   );
