@@ -110,6 +110,192 @@ export function similarityScore(a: string, b: string): number {
   return Math.round(((maxLen - dist) / maxLen) * 100);
 }
 
+// Dictionnaire certifié des rapprochements historiques et variantes orthographiques MFFE
+export const CERTIFIED_ENTITY_ALIASES: Record<string, string> = {
+  // CPPE & CACE & Pouponnières
+  'TIAPOUM': 'CPPE TIAPOUM',
+  'CPPE_TIAPOUM': 'CPPE TIAPOUM',
+  'BOKALA': 'CACE BOKALA',
+  'CACE_BOKALA': 'CACE BOKALA',
+  'ESPOIR DES MAMANS': 'CPPE ESPOIR DES MAMANS',
+  'CPPE_ESPOIR DES MAMANS': 'CPPE ESPOIR DES MAMANS',
+  'OLIENOU': 'CACE OLIENOU',
+  'CACE_OLIENOU': 'CACE OLIENOU',
+  'GRAND BASSAM': 'CPPE GRAND-BASSAM',
+  'CPPE_GRAND BASSAM': 'CPPE GRAND-BASSAM',
+  'GRAND-BASSAM': 'CPPE GRAND-BASSAM',
+  'NOE': 'CPPE NOE',
+  'CPPE_NOE': 'CPPE NOE',
+  'DIVO': 'CPPE DIVO',
+  'CPPE_DIVO': 'CPPE DIVO',
+  'GRAND MOUTCHO': 'CPPE GRAND MOUTCHO',
+  'CPPE_GRAND MOUTCHO': 'CPPE GRAND MOUTCHO',
+  'BODOKRO': 'CACE BODOKRO',
+  'CACE_BODOKRO': 'CACE BODOKRO',
+  'BONIEREDOUGOU': 'CPPE DU CSE DE BONIEREDOUGOU',
+  'CPPE_BONIEREDOUGOU': 'CPPE DU CSE DE BONIEREDOUGOU',
+  'POUPOUNIERE DE BOUAKE': 'POUPONNIERE BOUAKE',
+  'POUPOUNIERE DE BKE': 'POUPONNIERE BOUAKE',
+  'POUPONNIERE BOUAKE': 'POUPONNIERE BOUAKE',
+  'DJOROBITE 2': 'CPPE DJOROGOBITE 2',
+  'CPPE_DJOROBITE 2': 'CPPE DJOROGOBITE 2',
+  'DJOROBITE': 'CPPE DJOROGOBITE 2',
+  'TAZIBOUO': 'CPPE TAZIBOUO (DALOA',
+  'CPPE_TAZIBOUO': 'CPPE TAZIBOUO (DALOA',
+  'ZOUKOUGBE': 'CPPE ZOUKOUGBEU',
+  'CPPE_ZOUKOUGBE': 'CPPE ZOUKOUGBEU',
+  'ODIENNE': 'CPPE ODIENNE',
+  'CPPE_ODIENNE': 'CPPE ODIENNE',
+  'OUEDALA': 'CPPE OUEDALLAH',
+  'CPPE_OUEDALA': 'CPPE OUEDALLAH',
+  'ADAOU': 'CPPE ADAOU',
+  'CPPE_ADAOU': 'CPPE ADAOU',
+  'KANANGO KPLI': 'CACE KANANGOPLI',
+  'CACE_KANANGO KPLI': 'CACE KANANGOPLI',
+  'LES PRINCES DE MONTEZO': 'CACE MONTEZO',
+  'CACE_LES PRINCES DE MONTEZO': 'CACE MONTEZO',
+  'COCODY NORD': 'CPPE COCODY-NORD',
+  'CPPE_COCODY NORD': 'CPPE COCODY-NORD',
+  'GAN EDEN': 'CPPE GAN EDEN',
+  'GAN EDEN D AGBOVILLE': 'CPPE GAN EDEN',
+  'GAN EDEN D’AGBOVILLE': 'CPPE GAN EDEN',
+  'CPPE_GAN EDEN D AGBOVILLE': 'CPPE GAN EDEN',
+  'ABADJAN KOUTE': 'CPPE ABADJIN-KOUTE',
+  'CPPE_ABADJAN KOUTE': 'CPPE ABADJIN-KOUTE',
+  'ABADJIN KOUTE': 'CPPE ABADJIN-KOUTE',
+  'CPPE_ABADJIN KOUTE': 'CPPE ABADJIN-KOUTE',
+  'LES OLIVIERS DE GAGORE': 'CACE GAGORE',
+  'CACE_LES OLIVIERS DE GAGORE': 'CACE GAGORE',
+  'MEMNI': 'CPPE MEMNI',
+  'CPPE_MEMNI': 'CPPE MEMNI',
+  'QUARTIER BAOULE': 'CPPE QUARTIER BAOULE (DALOA)',
+  'CPPE_QUARTIER BAOULE': 'CPPE QUARTIER BAOULE (DALOA)',
+  'FLORENCE ACHI': 'CPPE ACHI FLORENCE',
+  'FLORENCE ACHI D ALEPE': 'CPPE ACHI FLORENCE',
+  'FLORENCE ACHI D’ALEPE': 'CPPE ACHI FLORENCE',
+  'CPPE_FLORENCE ACHI D ALEPE': 'CPPE ACHI FLORENCE',
+  'FERKE': 'CPPE FERKESSEDOUGOU',
+  'CPPE_FERKE': 'CPPE FERKESSEDOUGOU',
+  'MAN': 'CPPE MAN',
+  'CPPE_MAN': 'CPPE MAN',
+  'TOUBA': 'CPPE TOUBA',
+  'CPPE_TOUBA': 'CPPE TOUBA',
+  'YAPOPO': 'CPPE YAPOPO',
+  'CPPE_YAPOPO': 'CPPE YAPOPO',
+  'EBOINDA': 'CPPE EBOINDA',
+  'CPPE_EBOINDA': 'CPPE EBOINDA',
+  'BONGOUANOU': 'CPPE BONGOUANOU',
+  'CPPE_BONGOUANOU': 'CPPE BONGOUANOU',
+  'ASSALE TIEMOKO': 'CPPE ASSALE TIEMOKO DE TIASSALE',
+  'CPPE_TIASSALE': 'CPPE ASSALE TIEMOKO DE TIASSALE',
+  'CPPE_BOUAKE KOKO': 'CPPE BOUAKE KOKO',
+  'CPPE_BOUAKE-KOKO': 'CPPE BOUAKE KOKO',
+
+  // IFEF
+  'TIASALE': 'IFEF TIASSALE',
+  'IFEF_TIASALE': 'IFEF TIASSALE',
+  'TIASSALE': 'IFEF TIASSALE',
+  'IFEF_TIASSALE': 'IFEF TIASSALE',
+  'BONOUA': 'IFEF BONOUA',
+  'IFEF_BONOUA': 'IFEF BONOUA',
+  'SIKENSI': 'IFEF SIKENSI',
+  'IFEF_SIKENSI': 'IFEF SIKENSI',
+  'BINGERVILLE': 'IFEF BINGERVILLE',
+  'IFEF_BINGERVILLE': 'IFEF BINGERVILLE',
+  'BONDOUKOU': 'IFEF BONDOUKOU',
+  'IFEF_BONDOUKOU': 'IFEF BONDOUKOU',
+  'BOTRO': 'IFEF BOTRO',
+  'IFEF_BOTRO': 'IFEF BOTRO',
+  'BEOUMI': 'IFEF BEOUMI',
+  'IFEF_BEOUMI': 'IFEF BEOUMI',
+  'CAMP GALIENI': 'IFEF CAMP GALLIENI PLATEAU',
+  'CAMP GALIENI PLATEAU': 'IFEF CAMP GALLIENI PLATEAU',
+  'IFEF_CAMP GALIENI PLATEAU': 'IFEF CAMP GALLIENI PLATEAU',
+  'CAMP GALLIENI PLATEAU': 'IFEF CAMP GALLIENI PLATEAU',
+  'IFEF_CAMP GALLIENI PLATEAU': 'IFEF CAMP GALLIENI PLATEAU',
+  'CAMP GALLIENI': 'IFEF CAMP GALLIENI PLATEAU',
+  'DANANE': 'IFEF DANANE',
+  'IFEF_DANANE': 'IFEF DANANE',
+  'DIEGONEFLA': 'IFEF DIEGONEFLA',
+  'IFEF_DIEGONEFLA': 'IFEF DIEGONEFLA',
+  'TABOU': 'IFEF TABOU',
+  'IFEF_TABOU': 'IFEF TABOU',
+  'BLOLEQUIN': 'IFEF BLOLEQUIN',
+  'IFEF_BLOLEQUIN': 'IFEF BLOLEQUIN',
+  'BOUAKE KOKO': 'IFEF BOUAKE KOKO',
+  'IFEF_BOUAKE KOKO': 'IFEF BOUAKE KOKO',
+  'IFEF_BOUAKE-KOKO': 'IFEF BOUAKE KOKO',
+  'AGBOVILLE CNKF': 'IFEF CENTRE KIMOU',
+  'IFEF_AGBOVILLE CNKF': 'IFEF CENTRE KIMOU',
+  'CNKF': 'IFEF CENTRE KIMOU',
+  'IFEF_CNKF': 'IFEF CENTRE KIMOU',
+  'CENTRE KIMOU': 'IFEF CENTRE KIMOU',
+  'CAMP AGBAN': 'IFEF CAMP AGBAN',
+  'IFEF_CAMP AGBAN': 'IFEF CAMP AGBAN',
+  'CENTRE ANTONINO CELONA': 'IFEF CENTRE ANTONINO CELONA',
+  'IFEF_CENTRE ANTONINO CELONA': 'IFEF CENTRE ANTONINO CELONA',
+  'ANTONINO CELONA': 'IFEF CENTRE ANTONINO CELONA',
+  'SAN PEDRO': 'IFEF SAN PEDRO',
+  'SAN-PEDRO': 'IFEF SAN PEDRO',
+  'IFEF_SAN PEDRO': 'IFEF SAN PEDRO',
+  'TREICHVILLE ARRAS': 'IFEF TREICHVILLE ARRAS',
+  'IFEF_TREICHVILLE ARRAS': 'IFEF TREICHVILLE ARRAS',
+  'TREICHVILLE BELLEVILLE': 'IFEF TREICHVILLE BELLEVILLE',
+  'IFEF_TREICHVILLE BELLEVILLE': 'IFEF TREICHVILLE BELLEVILLE',
+  'YACOLIDABOUO': 'IFEF YACOLIDABOUO',
+  'IFEF_YACOLIDABOUO': 'IFEF YACOLIDABOUO',
+  'AIR FRANCE BOUAKE': 'IFEF AIR FRANCE BOUAKE',
+  'IFEF_AIR FRANCE BOUAKE': 'IFEF AIR FRANCE BOUAKE',
+
+  // CACE (Bordereau 23/10)
+  'KOUNDANOU': 'CACE KOUNDANOU',
+  'CACE_KOUNDANOU': 'CACE KOUNDANOU',
+  'ZUENOULA': 'CACE ZUENOULA',
+  'CACE_ZUENOULA': 'CACE ZUENOULA',
+  'KANANGO PKLI': 'CACE KANANGOPLI',
+  'CACE_KANANGO PKLI': 'CACE KANANGOPLI',
+  'ADONKOI': 'CACE ADONKOI 1',
+  'CACE_ADONKOI': 'CACE ADONKOI 1',
+  'GBAGBA BERLIN': 'CACE GBAGBA BERLIN',
+  'CACE_GBAGBA BERLIN': 'CACE GBAGBA BERLIN',
+
+  // CES (Bordereau 23/10)
+  'TREICHEVILLE': 'CES TREICHVILLE AVENUE I',
+  'CES_TREICHEVILLE': 'CES TREICHVILLE AVENUE I',
+  'CES_TREICHVILLE': 'CES TREICHVILLE AVENUE I',
+
+  // IFEF (Bordereau 23/10)
+  'ABOBODOUME': 'IFEF ABOBODOUME',
+  'IFEF_ABOBODOUME': 'IFEF ABOBODOUME',
+  'DALOA COMMUNE': 'IFEF DALOA COMMUNE',
+  'IFEF_DALOA COMMUNE': 'IFEF DALOA COMMUNE',
+  'GUIGLO': 'IFEF GUIGLO',
+  'IFEF_GUIGLO': 'IFEF GUIGLO',
+  'KORHOGO': 'IFEF KORHOGO',
+  'IFEF_KORHOGO': 'IFEF KORHOGO',
+  'ADZOPE': 'IFEF ADZOPE',
+  'IFEF_ADZOPE': 'IFEF ADZOPE',
+  'PORT BOUE': 'IFEF PORT-BOUET',
+  'IFEF_PORT BOUE': 'IFEF PORT-BOUET',
+  'PORT-BOUE': 'IFEF PORT-BOUET',
+  'IFEF_PORT-BOUE': 'IFEF PORT-BOUET',
+  'PORT BOUET': 'IFEF PORT-BOUET',
+  'ADIAKE': 'IFEF ADIAKE',
+  'IFEF_ADIAKE': 'IFEF ADIAKE',
+  'BOUAKE-AIR-FRANCE': 'IFEF AIR FRANCE BOUAKE',
+  'IFEF_BOUAKE-AIR-FRANCE': 'IFEF AIR FRANCE BOUAKE',
+  'BOUAKE AIR FRANCE': 'IFEF AIR FRANCE BOUAKE',
+  'IFEF_BOUAKE AIR FRANCE': 'IFEF AIR FRANCE BOUAKE',
+  'INSTITUT MARIE THERESE': 'IFEF MARIE THERESE HOUPHOUET BOIGNY',
+  'IFEF_INSTITUT MARIE THERESE': 'IFEF MARIE THERESE HOUPHOUET BOIGNY',
+  'MONTEZO': 'IFEF MONTEZO',
+  'IFEF_MONTEZO': 'IFEF MONTEZO',
+
+  // CPPE compléments (Bordereau 23/10)
+  'SOUBRE': 'CPPE SOUBRE',
+  'CPPE_SOUBRE': 'CPPE SOUBRE',
+};
+
 // -------------------------------------------------------------
 // MATCHING ALGORITHM
 // -------------------------------------------------------------
@@ -144,20 +330,52 @@ export function matchEntriesWithEntities(
 
     // Nature filter priority
     const isIfeCategory = cat.includes('IFEF');
-    const isCppeCaceCategory = cat.includes('CPPE') || cat.includes('CACE');
+    const isCaceCategory = cat.includes('CACE');
+    const isCesCategory = cat.includes('CES');
+    const isCppeCategory = cat.includes('CPPE') && !isCaceCategory;
+    const isCppeCaceCategory = isCppeCategory || isCaceCategory;
 
     let matchedEntity: EntityRecord | null = null;
     let matchStatus: MatchedImportItem['match_status'] = 'UNMATCHED';
     let confidence = 0;
     const candidates: MatchedEntityCandidate[] = [];
 
-    // 1. EXACT MATCH on Name or ID or Sigle
-    for (const d of preppedDb) {
-      if (d.normNom === normRaw || d.normId === normRaw || (d.normSigle && d.normSigle === normRaw)) {
-        matchedEntity = d.entity;
+    // 0. CERTIFIED ALIAS MATCH (Bordereaux MFFE certifiés)
+    const categoryPrefix = isIfeCategory
+      ? 'IFEF_'
+      : isCaceCategory
+      ? 'CACE_'
+      : isCesCategory
+      ? 'CES_'
+      : isCppeCategory
+      ? 'CPPE_'
+      : cat
+      ? `${cat}_`
+      : '';
+    const keyWithCategory = `${categoryPrefix}${normRaw}`;
+    const aliasTargetId =
+      CERTIFIED_ENTITY_ALIASES[keyWithCategory] ||
+      CERTIFIED_ENTITY_ALIASES[normRaw] ||
+      CERTIFIED_ENTITY_ALIASES[strippedRaw];
+
+    if (aliasTargetId) {
+      const found = preppedDb.find((d) => d.entity.id_entite === aliasTargetId);
+      if (found) {
+        matchedEntity = found.entity;
         matchStatus = 'EXACT';
         confidence = 100;
-        break;
+      }
+    }
+
+    // 1. EXACT MATCH on Name or ID or Sigle
+    if (!matchedEntity) {
+      for (const d of preppedDb) {
+        if (d.normNom === normRaw || d.normId === normRaw || (d.normSigle && d.normSigle === normRaw)) {
+          matchedEntity = d.entity;
+          matchStatus = 'EXACT';
+          confidence = 100;
+          break;
+        }
       }
     }
 
@@ -317,59 +535,60 @@ export async function parseDocxBuffer(buffer: Buffer): Promise<RawImportEntry[]>
 
   tableMatches.forEach((tableXml) => {
     const rows = tableXml.match(/<w:tr[\s\S]*?<\/w:tr>/g) || [];
+    if (rows.length === 0) return;
+    const firstRow = rows[0];
+    if (!firstRow) return;
+
+    // Detect header row categories
+    const headerRowCells = (firstRow.match(/<w:tc[\s\S]*?<\/w:tc>/g) || []).map((c) =>
+      c.replace(/<[^>]+>/g, '').trim()
+    );
+
+    // Build category map by column pairs (e.g. Col 0: CPPE, Col 2: CACE, Col 4: CES, Col 6: IFEF)
+    const colCategoryMap: Record<number, string> = {};
+    for (let c = 0; c < headerRowCells.length; c += 2) {
+      const colText = (headerRowCells[c] || '').toUpperCase();
+      if (colText.includes('CPPE')) colCategoryMap[c] = 'CPPE';
+      else if (colText.includes('CACE')) colCategoryMap[c] = 'CACE';
+      else if (colText.includes('CES')) colCategoryMap[c] = 'CES';
+      else if (colText.includes('IFEF')) colCategoryMap[c] = 'IFEF';
+      else if (colText.includes('CRECHE') || colText.includes('GARDERIE')) colCategoryMap[c] = 'CRECHE';
+      else colCategoryMap[c] = headerRowCells[c] || (c === 0 ? 'CPPE' : 'STRUCTURE');
+    }
+
     rows.forEach((rowXml, rowIdx) => {
+      if (rowIdx === 0) return; // Skip header row
+
       const cells = (rowXml.match(/<w:tc[\s\S]*?<\/w:tc>/g) || []).map((c) =>
         c.replace(/<[^>]+>/g, '').trim()
       );
 
-      // Skip header row if it contains keywords
-      const fullText = cells.join(' ').toUpperCase();
-      if (rowIdx === 0 && (fullText.includes('TOTAL') || fullText.includes('CPPE') || fullText.includes('STRUCTURE'))) {
+      // Skip summary or total rows
+      const firstCell = (cells[0] || '').toUpperCase();
+      if (firstCell.startsWith('TOTAL') || firstCell.startsWith('=SUM') || firstCell.startsWith('=')) {
         return;
       }
 
-      // Check standard 4-column layout:
-      // Col 0: CPPE/CACE Name, Col 1: Qty, Col 2: IFEF Name, Col 3: Qty
-      if (cells.length >= 2) {
-        const leftName = cells[0];
-        const leftQty = parseInt(cells[1], 10);
-        if (leftName && !leftName.toUpperCase().includes('TOTAL') && !isNaN(leftQty) && leftQty > 0) {
+      // Check all paired columns: (0, 1), (2, 3), (4, 5), (6, 7)...
+      for (let c = 0; c < cells.length; c += 2) {
+        const rawName = cells[c];
+        const qtyStr = cells[c + 1];
+        if (!rawName || !qtyStr) continue;
+
+        const upperName = rawName.toUpperCase();
+        if (upperName === 'TOTAL' || upperName.startsWith('=') || upperName === '-' || upperName === '') {
+          continue;
+        }
+
+        const qty = parseInt(qtyStr.replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(qty) && qty > 0) {
+          const category = colCategoryMap[c] || (c === 0 ? 'CPPE' : c === 2 ? 'CACE' : c === 4 ? 'CES' : 'IFEF');
           entries.push({
-            source_category: 'CPPE/CACE',
-            raw_name: leftName,
-            quantite: leftQty,
+            source_category: category,
+            raw_name: rawName,
+            quantite: qty,
             source_row_index: rowIdx + 1,
           });
-        }
-      }
-
-      if (cells.length >= 4) {
-        const rightName = cells[2];
-        const rightQty = parseInt(cells[3], 10);
-        if (rightName && !rightName.toUpperCase().includes('TOTAL') && !isNaN(rightQty) && rightQty > 0) {
-          entries.push({
-            source_category: 'IFEF',
-            raw_name: rightName,
-            quantite: rightQty,
-            source_row_index: rowIdx + 1,
-          });
-        }
-      }
-
-      // Or simple 2-column layout: Col 0: Name, Col 1: Qty
-      if (cells.length === 2 || cells.length === 3) {
-        const name = cells[0];
-        const qty = parseInt(cells[1], 10);
-        if (name && !name.toUpperCase().includes('TOTAL') && !isNaN(qty) && qty > 0) {
-          // Check if already pushed
-          if (!entries.some((e) => e.raw_name === name && e.quantite === qty)) {
-            entries.push({
-              source_category: 'STRUCTURE',
-              raw_name: name,
-              quantite: qty,
-              source_row_index: rowIdx + 1,
-            });
-          }
         }
       }
     });
@@ -429,30 +648,56 @@ export function parseExcelBuffer(buffer: Buffer, requestedType: 'RECEPTION' | 'L
     }
   }
 
-  // Case A: Bi-column format (CPPE/CACE Col 0-1, IFEF Col 2-3)
-  const isBiColumn =
-    rawData[0] &&
-    rawData[0][0] &&
-    rawData[0][0].toString().toUpperCase().includes('CPPE') &&
-    rawData[0][2] &&
-    rawData[0][2].toString().toUpperCase().includes('IFEF');
+  // Case A: Paired multi-column format (e.g. CPPE/TOTAL, CACE/TOTAL, CES/TOTAL, IFEF/TOTAL)
+  const headerCells = (rawData[0] || []).map((c) => (c ? c.toString().trim() : ''));
+  const headerUpper = headerCells.map((c) => c.toUpperCase());
+  const hasPairedCategories =
+    headerUpper.some((c) => c.includes('CPPE')) ||
+    headerUpper.some((c) => c.includes('CACE')) ||
+    headerUpper.some((c) => c.includes('CES')) ||
+    headerUpper.some((c) => c.includes('IFEF'));
 
-  if (isBiColumn) {
+  if (hasPairedCategories && headerCells.length >= 2) {
+    const colCategoryMap: Record<number, string> = {};
+    for (let c = 0; c < headerCells.length; c += 2) {
+      const colText = headerUpper[c] || '';
+      if (colText.includes('CPPE')) colCategoryMap[c] = 'CPPE';
+      else if (colText.includes('CACE')) colCategoryMap[c] = 'CACE';
+      else if (colText.includes('CES')) colCategoryMap[c] = 'CES';
+      else if (colText.includes('IFEF')) colCategoryMap[c] = 'IFEF';
+      else if (colText.includes('CRECHE') || colText.includes('GARDERIE')) colCategoryMap[c] = 'CRECHE';
+      else colCategoryMap[c] = headerCells[c] || 'STRUCTURE';
+    }
+
     for (let r = 1; r < rawData.length; r++) {
       const row = rawData[r] || [];
-      const leftName = row[0] ? row[0].toString().trim() : '';
-      const leftQty = parseInt(row[1], 10);
-      if (leftName && !leftName.toUpperCase().includes('TOTAL') && !isNaN(leftQty) && leftQty > 0) {
-        entries.push({ source_category: 'CPPE/CACE', raw_name: leftName, quantite: leftQty, source_row_index: r + 1 });
-      }
+      const firstVal = (row[0] || '').toString().trim().toUpperCase();
+      if (firstVal.startsWith('TOTAL') || firstVal.startsWith('=SUM') || firstVal.startsWith('=')) continue;
 
-      const rightName = row[2] ? row[2].toString().trim() : '';
-      const rightQty = parseInt(row[3], 10);
-      if (rightName && !rightName.toUpperCase().includes('TOTAL') && !isNaN(rightQty) && rightQty > 0) {
-        entries.push({ source_category: 'IFEF', raw_name: rightName, quantite: rightQty, source_row_index: r + 1 });
+      for (let c = 0; c < row.length; c += 2) {
+        const rawName = row[c] ? row[c].toString().trim() : '';
+        const qtyStr = row[c + 1] !== undefined ? row[c + 1].toString() : '';
+        if (!rawName || !qtyStr) continue;
+
+        const upperName = rawName.toUpperCase();
+        if (upperName === 'TOTAL' || upperName.startsWith('=') || upperName === '-') continue;
+
+        const qty = parseInt(qtyStr.replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(qty) && qty > 0) {
+          const category = colCategoryMap[c] || (c === 0 ? 'CPPE' : c === 2 ? 'CACE' : c === 4 ? 'CES' : 'IFEF');
+          entries.push({
+            source_category: category,
+            raw_name: rawName,
+            quantite: qty,
+            source_row_index: r + 1,
+          });
+        }
       }
     }
-    return entries;
+
+    if (entries.length > 0) {
+      return entries;
+    }
   }
 
   // Case B: Standard column table (e.g. Suivi_Enregistrements_CPPE_IFEF.xlsx)

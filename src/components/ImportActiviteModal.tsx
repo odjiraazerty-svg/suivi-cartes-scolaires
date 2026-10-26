@@ -27,6 +27,7 @@ import {
   Layers,
   History,
   FileCheck,
+  Table,
 } from 'lucide-react';
 import * as xlsx from 'xlsx';
 
@@ -119,6 +120,8 @@ export default function ImportActiviteModal({
   const [allDbEntities, setAllDbEntities] = useState<EntiteOption[]>([]);
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'VERIF' | 'UNMATCHED' | 'VALID'>('ALL');
   const [searchTable, setSearchTable] = useState('');
+  const [displayMode, setDisplayMode] = useState<'synthetic' | 'detailed'>('synthetic');
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [dropdownSearch, setDropdownSearch] = useState('');
 
@@ -377,6 +380,44 @@ export default function ImportActiviteModal({
     const wb = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(wb, ws, 'Anomalies & Ecarts');
     xlsx.writeFile(wb, `Ecarts_Import_${referenceBordereau || 'Bordereau'}.xlsx`);
+  };
+
+  // Exporter le classeur officiel complet de correspondance en Excel (.xlsx)
+  const handleExportFullCorrespondenceExcel = async () => {
+    try {
+      setDownloadingExcel(true);
+      const res = await fetch('/api/activites/import/export-correspondance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: importItems,
+          dateOperation,
+          typeActivite,
+          referenceBordereau: referenceBordereau || `BORD-${dateOperation}`,
+          anneeScolaire,
+          filename: `Correspondance_${(referenceBordereau || 'Bordereau').replace(/\s+/g, '_')}_${dateOperation}`,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Erreur lors du téléchargement.');
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Correspondance_${(referenceBordereau || 'Bordereau').replace(/\s+/g, '_')}_${dateOperation}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la génération du fichier Excel de correspondance.');
+    } finally {
+      setDownloadingExcel(false);
+    }
   };
 
   // Annuler un lot importé (Rollback)
@@ -785,84 +826,369 @@ export default function ImportActiviteModal({
                     </div>
                   </div>
 
-                  {/* Barre d'outils : Filtres, Recherche, Actions globales */}
-                  <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
-                    <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                  {/* Commutateur de Mode d'Affichage : Synthétique vs Détaillé */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 rounded-2xl bg-slate-950/80 border border-slate-800">
+                    <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs">
                       <button
                         type="button"
-                        onClick={() => setFilterStatus('ALL')}
-                        className={`px-2.5 py-1 rounded-lg font-medium transition ${
-                          filterStatus === 'ALL' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
+                        onClick={() => setDisplayMode('synthetic')}
+                        className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition cursor-pointer ${
+                          displayMode === 'synthetic'
+                            ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md shadow-orange-900/30'
+                            : 'text-slate-400 hover:text-white'
                         }`}
                       >
-                        Toutes ({totalLignes})
+                        <Table className="w-3.5 h-3.5" />
+                        <span>Tableau Synthétisé</span>
                       </button>
                       <button
                         type="button"
-                        onClick={() => setFilterStatus('VERIF')}
-                        className={`px-2.5 py-1 rounded-lg font-medium transition ${
-                          filterStatus === 'VERIF' ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
+                        onClick={() => setDisplayMode('detailed')}
+                        className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition cursor-pointer ${
+                          displayMode === 'detailed'
+                            ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md shadow-orange-900/30'
+                            : 'text-slate-400 hover:text-white'
                         }`}
                       >
-                        À vérifier ({countVerif})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFilterStatus('UNMATCHED')}
-                        className={`px-2.5 py-1 rounded-lg font-medium transition ${
-                          filterStatus === 'UNMATCHED' ? 'bg-red-500/20 text-red-300' : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        Inconnues ({countInconnus})
+                        <Layers className="w-3.5 h-3.5" />
+                        <span>Vue Détaillée & Ajustements</span>
                       </button>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          value={searchTable}
-                          onChange={(e) => setSearchTable(e.target.value)}
-                          placeholder="Filtrer par structure..."
-                          className="pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs outline-none focus:ring-1 focus:ring-orange-500 w-44 sm:w-56"
-                        />
-                      </div>
-
-                      {countInconnus > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleExportAnomalies}
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center gap-1.5 border border-slate-700 transition"
-                          title="Télécharger un tableau Excel des structures non répertoriées"
-                        >
-                          <Upload className="w-3.5 h-3.5 text-orange-400" />
-                          <span className="hidden sm:inline">Rapport d'écarts Excel</span>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={handleExportFullCorrespondenceExcel}
+                        disabled={downloadingExcel || importItems.length === 0}
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-emerald-900/20 transition disabled:opacity-50 cursor-pointer"
+                        title="Télécharger le fichier Excel de correspondance officiel DRH"
+                      >
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+                        <span>{downloadingExcel ? 'Génération Excel...' : 'Télécharger Correspondance Excel'}</span>
+                      </button>
                     </div>
                   </div>
 
-                  {/* Tableau interactif des correspondances */}
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden max-h-[380px] overflow-y-auto custom-scrollbar">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead className="bg-slate-900 sticky top-0 z-10 text-slate-400 border-b border-slate-800">
-                        <tr>
-                          <th className="py-2.5 px-3 w-10 text-center">
+                  {/* VUE 1 : TABLEAU DE CORRESPONDANCE SYNTHÉTISÉ */}
+                  {displayMode === 'synthetic' ? (
+                    <div className="space-y-3">
+                      {/* Diagnostic Exécutif */}
+                      <div
+                        className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 ${
+                          countInconnus === 0 && countVerif === 0
+                            ? 'bg-emerald-950/25 border-emerald-500/40 text-emerald-300'
+                            : 'bg-amber-950/25 border-amber-500/40 text-amber-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                              countInconnus === 0 && countVerif === 0
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-amber-500/20 text-amber-400'
+                            }`}
+                          >
+                            {countInconnus === 0 && countVerif === 0 ? (
+                              <CheckCircle2 className="w-5 h-5" />
+                            ) : (
+                              <AlertTriangle className="w-5 h-5" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs sm:text-sm">
+                              {countInconnus === 0 && countVerif === 0
+                                ? `Rapprochement Conforme DRH : 100 % des structures (${totalLignes}/${totalLignes}) sont associées à la table entite`
+                                : `${countValides}/${totalLignes} structures validées • ${countVerif + countInconnus} nécessitent confirmation`}
+                            </div>
+                            <div className="text-[11px] opacity-80">
+                              Volume total du bordereau : <strong>{totalCartesRetenues.toLocaleString('fr-FR')} cartes</strong> • Prêt pour imputation officielle.
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                             <input
-                              type="checkbox"
-                              checked={importItems.every((i) => i.selected)}
-                              onChange={(e) => handleSelectAll(e.target.checked)}
-                              className="rounded border-slate-700 text-orange-500 focus:ring-orange-500"
+                              type="text"
+                              value={searchTable}
+                              onChange={(e) => setSearchTable(e.target.value)}
+                              placeholder="Rechercher..."
+                              className="pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs outline-none focus:ring-1 focus:ring-orange-500 w-36 sm:w-48"
                             />
-                          </th>
-                          <th className="py-2.5 px-3">Nom dans le Fichier</th>
-                          <th className="py-2.5 px-3 w-24 text-center">Quantité</th>
-                          <th className="py-2.5 px-3 w-28 text-center">Statut</th>
-                          <th className="py-2.5 px-3">Structure Associée en Base</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/80">
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tableau Synthétisé Groupé */}
+                      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden max-h-[390px] overflow-y-auto custom-scrollbar shadow-inner">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead className="bg-slate-900 sticky top-0 z-10 text-slate-300 border-b border-slate-800 font-semibold">
+                            <tr>
+                              <th className="py-2.5 px-3 w-10 text-center">N°</th>
+                              <th className="py-2.5 px-3">Nom dans le Bordereau</th>
+                              <th className="py-2.5 px-3 w-20 text-right">Cartes</th>
+                              <th className="py-2.5 px-3 w-48">Code BD (id_entite)</th>
+                              <th className="py-2.5 px-3">Nom Officiel en Base</th>
+                              <th className="py-2.5 px-3 w-20 text-center">Nature</th>
+                              <th className="py-2.5 px-3 w-28">Localisation</th>
+                              <th className="py-2.5 px-3 w-32 text-center">Statut Rapprochement</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/80">
+                            {(() => {
+                              const cppeGroup = filteredItems.filter(
+                                (i) =>
+                                  ((i.source_category || '').toUpperCase() === 'CPPE' ||
+                                    (i.source_category || '').toUpperCase().includes('CPPE')) &&
+                                  !(i.source_category || '').toUpperCase().includes('CACE')
+                              );
+
+                              const caceGroup = filteredItems.filter(
+                                (i) =>
+                                  !cppeGroup.includes(i) &&
+                                  ((i.source_category || '').toUpperCase().includes('CACE') ||
+                                    (i.matched_nature || '').toUpperCase().includes('CACE'))
+                              );
+
+                              const cesGroup = filteredItems.filter(
+                                (i) =>
+                                  !cppeGroup.includes(i) &&
+                                  !caceGroup.includes(i) &&
+                                  ((i.source_category || '').toUpperCase().includes('CES') ||
+                                    (i.matched_nature || '').toUpperCase().includes('CES'))
+                              );
+
+                              const ifefGroup = filteredItems.filter(
+                                (i) =>
+                                  !cppeGroup.includes(i) &&
+                                  !caceGroup.includes(i) &&
+                                  !cesGroup.includes(i) &&
+                                  ((i.source_category || '').toUpperCase().includes('IFEF') ||
+                                    (i.matched_nature || '').toUpperCase().includes('IFEF'))
+                              );
+
+                              const otherGroup = filteredItems.filter(
+                                (i) => !cppeGroup.includes(i) && !caceGroup.includes(i) && !cesGroup.includes(i) && !ifefGroup.includes(i)
+                              );
+
+                              let globalIdx = 0;
+
+                              const renderRows = (groupTitle: string, groupItems: typeof filteredItems, badgeColor: string) => {
+                                if (groupItems.length === 0) return null;
+                                const subTotal = groupItems.reduce((acc, curr) => acc + (curr.quantite || 0), 0);
+
+                                return (
+                                  <React.Fragment key={groupTitle}>
+                                    {/* Sous-en-tête de catégorie */}
+                                    <tr className="bg-slate-900/90 font-bold border-t border-b border-slate-800">
+                                      <td colSpan={2} className="py-2 px-3">
+                                        <div className="flex items-center gap-2">
+                                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${badgeColor}`}>
+                                            {groupTitle}
+                                          </span>
+                                          <span className="text-[11px] text-slate-400">
+                                            ({groupItems.length} structure{groupItems.length > 1 ? 's' : ''})
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="py-2 px-3 text-right font-mono font-bold text-emerald-400">
+                                        {subTotal.toLocaleString('fr-FR')}
+                                      </td>
+                                      <td colSpan={5} className="py-2 px-3 text-[11px] text-slate-500 italic">
+                                        Sous-total catégorie
+                                      </td>
+                                    </tr>
+
+                                    {/* Lignes d'entités */}
+                                    {groupItems.map((item) => {
+                                      globalIdx++;
+                                      const isUnmatched = !item.matched_entite_id || item.match_status === 'UNMATCHED';
+                                      const isAmbiguous = item.match_status === 'AMBIGUOUS' || item.match_status === 'FUZZY';
+
+                                      return (
+                                        <tr
+                                          key={item.id}
+                                          className={`transition hover:bg-slate-900/50 ${
+                                            isUnmatched ? 'bg-red-950/20' : isAmbiguous ? 'bg-amber-950/15' : ''
+                                          }`}
+                                        >
+                                          <td className="py-2 px-3 text-center text-slate-400 font-mono">
+                                            {globalIdx}
+                                          </td>
+
+                                          <td className="py-2 px-3">
+                                            <div className="font-semibold text-white">{item.raw_name}</div>
+                                            <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-mono text-[9px]">
+                                                {item.source_category}
+                                              </span>
+                                            </div>
+                                          </td>
+
+                                          <td className="py-2 px-3 text-right font-bold text-emerald-400 font-mono">
+                                            {item.quantite}
+                                          </td>
+
+                                          <td className="py-2 px-3 font-mono font-bold text-orange-400">
+                                            {item.matched_entite_id || '-'}
+                                          </td>
+
+                                          <td className="py-2 px-3 text-slate-200">
+                                            {item.matched_entite_nom || (
+                                              <span className="text-red-400 italic">Non répertorié</span>
+                                            )}
+                                          </td>
+
+                                          <td className="py-2 px-3 text-center">
+                                            {item.matched_nature ? (
+                                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-200 border border-slate-700">
+                                                {item.matched_nature}
+                                              </span>
+                                            ) : (
+                                              '-'
+                                            )}
+                                          </td>
+
+                                          <td className="py-2 px-3 text-slate-300">
+                                            {item.matched_localisation || '-'}
+                                          </td>
+
+                                          <td className="py-2 px-3 text-center">
+                                            {isUnmatched ? (
+                                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30">
+                                                <X className="w-3 h-3" /> Non reconnu
+                                              </span>
+                                            ) : isAmbiguous ? (
+                                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                                <AlertTriangle className="w-3 h-3" /> À valider
+                                              </span>
+                                            ) : (
+                                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                                <Check className="w-3 h-3" /> Conforme 100%
+                                              </span>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </React.Fragment>
+                                );
+                              };
+
+                              return (
+                                <>
+                                  {renderRows('CPPE & Pouponnières', cppeGroup, 'bg-blue-500/20 text-blue-300 border border-blue-500/40')}
+                                  {renderRows('CACE - Centres d\'Action Communautaire', caceGroup, 'bg-amber-500/20 text-amber-300 border border-amber-500/40')}
+                                  {renderRows('CES - Centres d\'Éducation Spécialisée', cesGroup, 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40')}
+                                  {renderRows('IFEF - Institutions Féminines', ifefGroup, 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40')}
+                                  {renderRows('Autres Structures & Établissements', otherGroup, 'bg-purple-500/20 text-purple-300 border border-purple-500/40')}
+                                </>
+                              );
+                            })()}
+                          </tbody>
+                          <tfoot className="bg-slate-900 sticky bottom-0 z-10 font-bold border-t-2 border-slate-700 text-white">
+                            <tr>
+                              <td colSpan={2} className="py-2.5 px-3 text-left">
+                                TOTAL GÉNÉRAL ({filteredItems.length} structures)
+                              </td>
+                              <td className="py-2.5 px-3 text-right text-emerald-400 font-mono text-sm">
+                                {totalCartesRetenues.toLocaleString('fr-FR')}
+                              </td>
+                              <td colSpan={4} className="py-2.5 px-3 text-slate-400 text-[11px]">
+                                Taux de conformité : {((countValides / (totalLignes || 1)) * 100).toFixed(1)} %
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                  {countValides}/{totalLignes} Rapprochés
+                                </span>
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    /* VUE 2 : TABLEAU DÉTAILLÉ AVEC MODIFICATIONS */
+                    <div className="space-y-3">
+                      {/* Barre d'outils : Filtres, Recherche, Actions globales */}
+                      <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+                        <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setFilterStatus('ALL')}
+                            className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                              filterStatus === 'ALL' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            Toutes ({totalLignes})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFilterStatus('VERIF')}
+                            className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                              filterStatus === 'VERIF' ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            À vérifier ({countVerif})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFilterStatus('UNMATCHED')}
+                            className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                              filterStatus === 'UNMATCHED' ? 'bg-red-500/20 text-red-300' : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            Inconnues ({countInconnus})
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={searchTable}
+                              onChange={(e) => setSearchTable(e.target.value)}
+                              placeholder="Filtrer par structure..."
+                              className="pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs outline-none focus:ring-1 focus:ring-orange-500 w-44 sm:w-56"
+                            />
+                          </div>
+
+                          {countInconnus > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleExportAnomalies}
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center gap-1.5 border border-slate-700 transition"
+                              title="Télécharger un tableau Excel des structures non répertoriées"
+                            >
+                              <Upload className="w-3.5 h-3.5 text-orange-400" />
+                              <span className="hidden sm:inline">Rapport d'écarts Excel</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Tableau interactif des correspondances */}
+                      <div className="rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden max-h-[380px] overflow-y-auto custom-scrollbar">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead className="bg-slate-900 sticky top-0 z-10 text-slate-400 border-b border-slate-800">
+                            <tr>
+                              <th className="py-2.5 px-3 w-10 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={importItems.every((i) => i.selected)}
+                                  onChange={(e) => handleSelectAll(e.target.checked)}
+                                  className="rounded border-slate-700 text-orange-500 focus:ring-orange-500"
+                                />
+                              </th>
+                              <th className="py-2.5 px-3">Nom dans le Fichier</th>
+                              <th className="py-2.5 px-3 w-24 text-center">Quantité</th>
+                              <th className="py-2.5 px-3 w-28 text-center">Statut</th>
+                              <th className="py-2.5 px-3">Structure Associée en Base</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/80">
                         {filteredItems.map((item) => {
                           const isUnmatched = item.match_status === 'UNMATCHED';
                           const isAmbiguous = item.match_status === 'AMBIGUOUS' || item.match_status === 'FUZZY';
@@ -1012,8 +1338,10 @@ export default function ImportActiviteModal({
                           );
                         })}
                       </tbody>
-                    </table>
-                  </div>
+                        </table>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Actions de validation */}
                   <div className="flex items-center justify-between pt-2">

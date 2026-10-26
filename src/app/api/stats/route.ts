@@ -29,11 +29,38 @@ export async function GET(request: Request) {
     );
     const derniereDateActive = lastActiveRes[0]?.derniere_date || todayDate;
 
-    // 1. Total entités (référentiel national des structures actives)
-    const entitesCount = await query<{ count: string }>('SELECT COUNT(*)::text as count FROM entite WHERE actif = true');
+    // Récupérer dynamiquement les natures d'entités impactées par l'activité des cartes scolaires
+    const naturesConcerneesRes = await query<{ id_nature: string }>(
+      `SELECT DISTINCT e.id_nature 
+       FROM entite e 
+       WHERE e.id_entite IN (
+         SELECT id_entite FROM reception_carte 
+         UNION 
+         SELECT id_entite FROM livraison_carte
+       ) AND e.id_nature IS NOT NULL
+       ORDER BY e.id_nature ASC`
+    );
+    const naturesConcerneesList = naturesConcerneesRes.map((r) => r.id_nature);
+    const defaultNatures = ['CPPE', 'IFEF', 'CACE', 'CES', 'POUPONNIERE', 'CRECHE  GARDERIE'];
+    const activeNatures = naturesConcerneesList.length > 0 ? naturesConcerneesList : defaultNatures;
+
+    // 1. Total structures concernées par l'activité (natures scolaires et d'accueil impactées)
+    const entitesCount = await query<{ count: string }>(
+      `SELECT COUNT(*)::text as count 
+       FROM entite 
+       WHERE (actif = true OR actif IS NULL)
+         AND id_nature = ANY($1)`,
+      [activeNatures]
+    );
     const totalEntites = parseInt(entitesCount[0]?.count || '0', 10);
 
-    // 2. Structures concernées (ayant réceptionné des cartes au titre de l'année scolaire)
+    // Total national brut (toutes les structures du ministère y compris directions centrales)
+    const entitesNationalCount = await query<{ count: string }>(
+      'SELECT COUNT(*)::text as count FROM entite WHERE (actif = true OR actif IS NULL)'
+    );
+    const totalEntitesNational = parseInt(entitesNationalCount[0]?.count || '0', 10);
+
+    // 2. Structures ayant réceptionné des cartes au titre de l'année scolaire
     const structuresConcerneesRes = await query<{ count: string }>(
       `SELECT COUNT(DISTINCT id_entite)::text as count 
        FROM reception_carte 
@@ -218,10 +245,11 @@ export async function GET(request: Request) {
        FROM entite e
        LEFT JOIN nature_entite n ON UPPER(TRIM(e.id_nature)) = UPPER(TRIM(n.id_nature))
        LEFT JOIN bilan b ON e.id_entite = b.id_entite
-       WHERE e.actif = true OR e.actif IS NULL
+       WHERE (e.actif = true OR e.actif IS NULL)
+         AND e.id_nature = ANY($3)
        GROUP BY COALESCE(n.id_nature, e.id_nature, 'AUTRE'), COALESCE(n.libelle, e.id_nature, 'Autre Structure')
        ORDER BY total_structures DESC, total_recu DESC`,
-      [anneeParam, cleanAnnee]
+      [anneeParam, cleanAnnee, activeNatures]
     );
 
     const recapParNature = recapParNatureRaw.map((item: any) => ({
@@ -239,8 +267,10 @@ export async function GET(request: Request) {
       success: true,
       stats: {
         totalEntites,
+        totalEntitesNational,
         structuresConcernees,
         tauxStructures,
+        naturesConcernees: activeNatures,
         totalProduit,
         tauxReception,
         totalRecu,

@@ -75,7 +75,7 @@ export default function LivraisonCartesPage() {
   const fetchEntites = async (query: string) => {
     try {
       setIsSearching(true);
-      const res = await fetch(`/api/entites?q=${encodeURIComponent(query)}&all=true`);
+      const res = await fetch(`/api/entites?q=${encodeURIComponent(query)}&all=true&concernees_only=true`);
       if (res.ok) {
         const data = await res.json();
         setEntites(data.entites || []);
@@ -346,9 +346,13 @@ export default function LivraisonCartesPage() {
                             <div className="min-w-0">
                               <div className="text-xs font-bold text-white truncate">{ent.nom}</div>
                               <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                {ent.id_nature && (
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                    {ent.id_nature}
+                                  </span>
+                                )}
                                 {ent.sigle && <span className="font-semibold text-orange-400">[{ent.sigle}]</span>}
                                 <span>{ent.localisation || 'Abidjan'}</span>
-                                <span className="text-[10px] px-1 rounded bg-slate-800 text-slate-400">{ent.id_hierarchisation}</span>
                               </div>
                             </div>
                           </div>

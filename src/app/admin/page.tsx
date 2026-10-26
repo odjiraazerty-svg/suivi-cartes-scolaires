@@ -9,7 +9,6 @@ import {
   PackageCheck,
   Send,
   Boxes,
-  TrendingUp,
   LogOut,
   RefreshCw,
   PlusCircle,
@@ -304,6 +303,11 @@ export default function AdminDashboardPage() {
   const [livraisonsList, setLivraisonsList] = useState<any[]>([]);
   const [structuresList, setStructuresList] = useState<any[]>([]);
   const [stockList, setStockList] = useState<any[]>([]);
+  const [structureModalNature, setStructureModalNature] = useState<string>('ALL');
+  const [showAllMinistereStructures, setShowAllMinistereStructures] = useState<boolean>(false);
+  const [structureViewMode, setStructureViewMode] = useState<'grouped' | 'flat'>('grouped');
+  const [structureSelectedDr, setStructureSelectedDr] = useState<string>('ALL');
+  const [expandedDrs, setExpandedDrs] = useState<Record<string, boolean>>({});
 
   // Modification / Suppression Réception
   const [editingReception, setEditingReception] = useState<any | null>(null);
@@ -352,7 +356,7 @@ export default function AdminDashboardPage() {
     if (allStructures.length > 0) return allStructures;
     try {
       setLoadingAllStructures(true);
-      const res = await fetch('/api/entites?all=true');
+      const res = await fetch('/api/entites?all=true&concernees_only=true');
       if (res.ok) {
         const data = await res.json();
         const list = data.entites || [];
@@ -474,7 +478,8 @@ export default function AdminDashboardPage() {
 
   const openKpiModal = async (
     type: 'structures' | 'receptions' | 'livraisons' | 'stock',
-    overrideAnnee?: string
+    overrideAnnee?: string,
+    overrideAllMinistere?: boolean
   ) => {
     setActiveKpiModal(type);
     setKpiSearch('');
@@ -486,6 +491,14 @@ export default function AdminDashboardPage() {
     setEditingStructure(null);
     setDeleteConfirmStructure(null);
     setKpiModalLoading(true);
+    setStructureModalNature('ALL');
+    setStructureSelectedDr('ALL');
+    setExpandedDrs({});
+
+    const nextAllMinistere = overrideAllMinistere !== undefined ? overrideAllMinistere : showAllMinistereStructures;
+    if (overrideAllMinistere !== undefined) {
+      setShowAllMinistereStructures(overrideAllMinistere);
+    }
 
     const anneeToUse = (overrideAnnee || selectedAnneeScolaire || '2026-2027').replace(/\s+/g, '');
 
@@ -503,7 +516,8 @@ export default function AdminDashboardPage() {
           setLivraisonsList(data.livraisons || []);
         }
       } else if (type === 'structures') {
-        const res = await fetch(`/api/entites?all=true&annee_scolaire=${anneeToUse}`);
+        const url = `/api/entites?all=true&annee_scolaire=${anneeToUse}${nextAllMinistere ? '' : '&concernees_only=true'}`;
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           setStructuresList(data.entites || []);
@@ -688,7 +702,8 @@ export default function AdminDashboardPage() {
             (s.sigle || '').toLowerCase().includes(kpiSearch.toLowerCase()) ||
             (s.id_nature || '').toLowerCase().includes(kpiSearch.toLowerCase()) ||
             (s.localisation || '').toLowerCase().includes(kpiSearch.toLowerCase()) ||
-            (s.id_entite || '').toLowerCase().includes(kpiSearch.toLowerCase())
+            (s.id_entite || '').toLowerCase().includes(kpiSearch.toLowerCase()) ||
+            ((s.nom_parent || s.id_entite_parent || '').toLowerCase().includes(kpiSearch.toLowerCase()))
         );
 
       if (!sourceList || sourceList.length === 0) {
@@ -699,14 +714,26 @@ export default function AdminDashboardPage() {
         return;
       }
 
-      const rows = sourceList.map((st, idx) => ({
+      // Tri hiérarchique par Direction Régionale puis Ville / Localisation puis Nom de la structure
+      const sortedList = [...sourceList].sort((a, b) => {
+        const drA = (a.nom_parent || a.id_entite_parent || 'Sans Direction Régionale').toLowerCase();
+        const drB = (b.nom_parent || b.id_entite_parent || 'Sans Direction Régionale').toLowerCase();
+        if (drA !== drB) return drA.localeCompare(drB, 'fr');
+        const locA = (a.localisation || '').toLowerCase();
+        const locB = (b.localisation || '').toLowerCase();
+        if (locA !== locB) return locA.localeCompare(locB, 'fr');
+        return (a.nom || '').localeCompare(b.nom || '', 'fr');
+      });
+
+      const rows = sortedList.map((st, idx) => ({
         'N°': idx + 1,
+        'Direction Régionale': st.nom_parent || st.id_entite_parent || 'Sans Direction Régionale',
+        'Ville / Localisation': st.localisation || '',
         'Code Structure': st.id_entite || '',
         'Nom de la Structure': st.nom || '',
         'Sigle': st.sigle || '',
         'Nature': st.id_nature || st.sigle || 'STRUCTURE',
         'Niveau Hiérarchique': st.id_hierarchisation || '',
-        'Localisation / Ville': st.localisation || '',
         'Total Cartes Reçues': Number(st.total_recu) || 0,
         'Total Cartes Distribuées': Number(st.total_livre) || 0,
         'Solde en Stock': Number(st.solde_stock_disponible) || 0,
@@ -716,12 +743,13 @@ export default function AdminDashboardPage() {
       const ws = xlsx.utils.json_to_sheet(rows);
       ws['!cols'] = [
         { wch: 6 },  // N°
-        { wch: 16 }, // Code
+        { wch: 34 }, // Direction Régionale
+        { wch: 24 }, // Ville / Localisation
+        { wch: 18 }, // Code
         { wch: 45 }, // Nom
         { wch: 14 }, // Sigle
-        { wch: 14 }, // Nature
+        { wch: 16 }, // Nature
         { wch: 24 }, // Hiérarchisation
-        { wch: 24 }, // Localisation
         { wch: 18 }, // Reçu
         { wch: 20 }, // Distribué
         { wch: 16 }, // Stock
@@ -738,7 +766,7 @@ export default function AdminDashboardPage() {
 
       setFeedbackMessage({
         type: 'success',
-        text: `Export réussi : ${sourceList.length} structure(s) exportée(s) dans "${filename}".`,
+        text: `Export réussi : ${sortedList.length} structure(s) ordonnée(s) par Direction Régionale et Ville / Localisation dans "${filename}".`,
       });
     } catch (err: any) {
       console.error('Erreur export structures:', err);
@@ -1543,18 +1571,21 @@ export default function AdminDashboardPage() {
             className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900/90 shadow-lg relative overflow-hidden flex flex-col justify-between text-left transition-all duration-200 hover:-translate-y-1 active:scale-[0.98] group cursor-pointer"
           >
             <div className="flex items-center justify-between text-slate-400 mb-2 w-full">
-              <span className="text-xs font-semibold uppercase tracking-wider group-hover:text-blue-400 transition">Structures</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider group-hover:text-blue-400 transition">Structures</span>
+                <span className="px-1.5 py-0.2 rounded bg-blue-500/15 text-blue-300 text-[9px] font-bold border border-blue-500/30">Cibles</span>
+              </div>
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition">
                 <School className="w-4 h-4" />
               </div>
             </div>
             <div>
               <div className="text-2xl sm:text-3xl font-black text-white group-hover:text-blue-200 transition">
-                {stats?.totalEntites ?? 769}
+                {stats?.totalEntites ?? 535}
               </div>
               <div className="mt-1.5 flex flex-col gap-1">
                 <div className="text-[11px] text-slate-300 font-medium flex items-center justify-between gap-1">
-                  <span>Concernées :</span>
+                  <span>Dotées :</span>
                   <strong className="text-blue-400">{stats?.structuresConcernees ?? 0}</strong>
                 </div>
                 <div className="flex items-center justify-between">
@@ -1566,7 +1597,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-blue-400 font-semibold group-hover:text-blue-300">
-              <span>Voir l'annuaire ({stats?.totalEntites ?? 769} structures)</span>
+              <span>Voir l'annuaire ({stats?.totalEntites ?? 535} concernées)</span>
               <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
             </div>
           </button>
@@ -1841,8 +1872,8 @@ export default function AdminDashboardPage() {
                 </div>
               )}
 
-              {/* Grille des Cartes Interactives du Jour (Reçu, Distribué, Solde, Taux) */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {/* Grille des Cartes Interactives du Jour (Reçu du Jour & Distribué du Jour) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* CARTE 1: TOTAL REÇU DU JOUR */}
                 <button
                   type="button"
@@ -1897,66 +1928,6 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-orange-400 font-semibold group-hover:text-orange-300">
                     <span>Détails des livraisons</span>
-                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
-                  </div>
-                </button>
-
-                {/* CARTE 3: SOLDE NET DU JOUR */}
-                <button
-                  type="button"
-                  onClick={() => openDayModal('journal_jour')}
-                  className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-blue-500/60 hover:bg-slate-900/90 shadow-lg relative overflow-hidden flex flex-col justify-between text-left transition-all duration-200 hover:-translate-y-1 active:scale-[0.98] group cursor-pointer"
-                >
-                  <div className="flex items-center justify-between mb-2 w-full">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1">
-                      Solde Net du Jour
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-500/25 transition">
-                      <Boxes className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div>
-                    <div className={`text-2xl sm:text-3xl font-black transition flex items-baseline gap-1 ${
-                      (activiteJour?.soldeNet ?? 0) >= 0 ? 'text-blue-400 group-hover:text-blue-300' : 'text-amber-400 group-hover:text-amber-300'
-                    }`}>
-                      {(activiteJour?.soldeNet ?? 0) > 0 ? `+${activiteJour?.soldeNet?.toLocaleString('fr-FR')}` : (activiteJour?.soldeNet?.toLocaleString('fr-FR') ?? 0)}
-                      <span className="text-xs font-semibold text-blue-300/70">cartes</span>
-                    </div>
-                    <p className="text-[11px] text-slate-300 mt-1 font-medium">
-                      Variation nette du stock ce jour
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-blue-400 font-semibold group-hover:text-blue-300">
-                    <span>Journal des flux</span>
-                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
-                  </div>
-                </button>
-
-                {/* CARTE 4: TAUX DE DISTRIBUTION DU JOUR */}
-                <button
-                  type="button"
-                  onClick={() => openDayModal('journal_jour')}
-                  className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-purple-500/60 hover:bg-slate-900/90 shadow-lg relative overflow-hidden flex flex-col justify-between text-left transition-all duration-200 hover:-translate-y-1 active:scale-[0.98] group cursor-pointer"
-                >
-                  <div className="flex items-center justify-between mb-2 w-full">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1">
-                      Taux du Jour
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-500/25 transition">
-                      <TrendingUp className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-black text-purple-400 group-hover:text-purple-300 transition flex items-baseline gap-1">
-                      {activiteJour?.tauxDistribution ?? 0}%
-                      <span className="text-xs font-semibold text-purple-300/70">distribué</span>
-                    </div>
-                    <p className="text-[11px] text-slate-300 mt-1 font-medium">
-                      Sur les cartes reçues ce jour
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-purple-400 font-semibold group-hover:text-purple-300">
-                    <span>Bilan du jour</span>
                     <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
                   </div>
                 </button>
@@ -2251,8 +2222,16 @@ export default function AdminDashboardPage() {
                         </td>
 
                         {/* Solde en Stock */}
-                        <td className="py-3 px-3 text-right font-extrabold text-purple-300 text-sm">
-                          {item.solde_stock.toLocaleString('fr-FR')}
+                        <td className="py-3 px-3 text-right">
+                          {item.solde_stock > 0 ? (
+                            <span className="inline-flex items-center justify-end px-2.5 py-1 rounded-lg bg-purple-950/80 border border-purple-400/60 font-black text-xs sm:text-sm text-purple-300 shadow-sm ring-1 ring-purple-500/20">
+                              <span className="font-black text-purple-300 drop-shadow-[0_0_8px_rgba(192,132,252,0.45)]">
+                                {item.solde_stock.toLocaleString('fr-FR')}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 font-semibold text-xs">0</span>
+                          )}
                         </td>
 
                         {/* Taux de Distribution */}
@@ -2338,8 +2317,12 @@ export default function AdminDashboardPage() {
                       <td className="py-3.5 px-3 text-right text-orange-400 text-sm">
                         {totLivre.toLocaleString('fr-FR')}
                       </td>
-                      <td className="py-3.5 px-3 text-right text-purple-300 text-sm">
-                        {totStock.toLocaleString('fr-FR')}
+                      <td className="py-3.5 px-3 text-right">
+                        <span className="inline-flex items-center justify-end px-2.5 py-1 rounded-lg bg-purple-950/80 border border-purple-400/60 font-black text-xs sm:text-sm text-purple-300 shadow-sm ring-1 ring-purple-500/20">
+                          <span className="font-black text-purple-300 drop-shadow-[0_0_8px_rgba(192,132,252,0.45)]">
+                            {totStock.toLocaleString('fr-FR')}
+                          </span>
+                        </span>
                       </td>
                       <td className="py-3.5 px-3 text-center text-white">
                         <div className="inline-flex flex-col items-center gap-1 min-w-[70px]">
@@ -2422,7 +2405,7 @@ export default function AdminDashboardPage() {
                     <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                       {activeKpiModal === 'receptions' && 'Enregistrements des Cartes Reçues'}
                       {activeKpiModal === 'livraisons' && 'Enregistrements des Cartes Livrées'}
-                      {activeKpiModal === 'structures' && `Annuaire des ${structuresList.length || stats?.totalEntites || 769} Structures MFFE`}
+                      {activeKpiModal === 'structures' && `Annuaire des ${structuresList.length || stats?.totalEntites || 535} Structures MFFE`}
                       {activeKpiModal === 'stock' && 'Entités ayant des Cartes en Stock'}
                       <span className="text-[11px] font-semibold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
                         {selectedAnneeScolaire}
@@ -2431,7 +2414,7 @@ export default function AdminDashboardPage() {
                     <p className="text-xs text-slate-400">
                       {activeKpiModal === 'receptions' && 'Consultez, modifiez ou supprimez les lots de réceptions enregistrés'}
                       {activeKpiModal === 'livraisons' && 'Historique complet des distributions effectuées'}
-                      {activeKpiModal === 'structures' && "Visualisation et gestion de l'ensemble des structures et directions du ministère"}
+                      {activeKpiModal === 'structures' && "Organisation hiérarchique : 1- Direction Régionale • 2- Ville ou Localisation"}
                       {activeKpiModal === 'stock' && 'Affichage exclusif des entités disposant d\'un solde de cartes en réserve'}
                     </p>
                   </div>
@@ -2837,8 +2820,8 @@ export default function AdminDashboardPage() {
                             <span className="text-white font-bold">{filtered.length}</span> entité(s) ayant des cartes en stock
                           </div>
                           <div className="inline-flex items-center gap-2">
-                            <span className="px-2.5 py-1 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-300 font-bold text-[11px]">
-                              Total disponible : {totalEnStock.toLocaleString('fr-FR')} cartes
+                            <span className="px-2.5 py-1 rounded-lg bg-purple-950/80 border border-purple-400/50 text-purple-300 font-bold text-[11px] shadow-sm ring-1 ring-purple-500/20">
+                              Total disponible : <strong className="text-purple-200 font-black">{totalEnStock.toLocaleString('fr-FR')}</strong> cartes
                             </span>
                             <button
                               type="button"
@@ -2886,8 +2869,10 @@ export default function AdminDashboardPage() {
                                     {st.total_livre ? Number(st.total_livre).toLocaleString('fr-FR') : 0}
                                   </td>
                                   <td className="py-3 px-3 text-right">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-purple-500/20 text-purple-200 border border-purple-500/40 font-black text-xs sm:text-sm">
-                                      {Number(st.solde_stock_disponible || 0).toLocaleString('fr-FR')}
+                                    <span className="inline-flex items-center justify-end px-2.5 py-1 rounded-lg bg-purple-950/80 border border-purple-400/60 text-purple-300 font-black text-xs sm:text-sm shadow-sm ring-1 ring-purple-500/25">
+                                      <span className="font-black text-purple-300 tracking-wide text-xs sm:text-sm drop-shadow-[0_0_8px_rgba(192,132,252,0.45)]">
+                                        {Number(st.solde_stock_disponible || 0).toLocaleString('fr-FR')}
+                                      </span>
                                     </span>
                                   </td>
                                   <td className="py-3 px-3 text-center">
@@ -2914,114 +2899,750 @@ export default function AdminDashboardPage() {
                     );
                   })()
                 ) : (
-                  // VUE STRUCTURES (ANNUAIRE COMPLET DES 582 STRUCTURES)
+                  // VUE STRUCTURES (ANNUAIRE DES STRUCTURES MFFE ORGANISÉ PAR DIRECTION RÉGIONALE ET PAR NATURE)
                   (() => {
-                    const filtered = structuresList.filter(
-                      (s) =>
-                        (s.nom || '').toLowerCase().includes(kpiSearch.toLowerCase()) ||
-                        (s.sigle || '').toLowerCase().includes(kpiSearch.toLowerCase()) ||
-                        (s.id_nature || '').toLowerCase().includes(kpiSearch.toLowerCase()) ||
-                        (s.localisation || '').toLowerCase().includes(kpiSearch.toLowerCase())
+                    // 1. Liste de toutes les Directions Régionales uniques
+                    const allDrs = Array.from(
+                      new Set(
+                        structuresList.map((s) =>
+                          (s.nom_parent || s.id_entite_parent || 'Sans Direction Régionale').trim()
+                        )
+                      )
+                    ).sort((a, b) => a.localeCompare(b, 'fr'));
+
+                    // Nombre de structures par DR dans le référentiel complet
+                    const structuresCountByDr: Record<string, number> = {};
+                    structuresList.forEach((s) => {
+                      const dr = (s.nom_parent || s.id_entite_parent || 'Sans Direction Régionale').trim();
+                      structuresCountByDr[dr] = (structuresCountByDr[dr] || 0) + 1;
+                    });
+
+                    // 2. Natures disponibles
+                    const availableNatures = Array.from(
+                      new Set(
+                        structuresList
+                          .map((s) => (s.id_nature || 'AUTRE').toUpperCase())
+                          .filter(Boolean)
+                      )
+                    ).sort();
+
+                    // 3. Filtrage combiné (Recherche textuelle, DR sélectionnée, Nature sélectionnée)
+                    const filtered = structuresList.filter((s) => {
+                      const drName = (s.nom_parent || s.id_entite_parent || 'Sans Direction Régionale').trim();
+                      if (structureSelectedDr !== 'ALL' && drName !== structureSelectedDr) {
+                        return false;
+                      }
+
+                      const matchNature =
+                        structureModalNature === 'ALL' ||
+                        (s.id_nature || 'AUTRE').toUpperCase() === structureModalNature;
+                      if (!matchNature) return false;
+
+                      if (!kpiSearch.trim()) return true;
+                      const term = kpiSearch.toLowerCase();
+                      return (
+                        (s.nom || '').toLowerCase().includes(term) ||
+                        (s.sigle || '').toLowerCase().includes(term) ||
+                        (s.id_nature || '').toLowerCase().includes(term) ||
+                        (s.localisation || '').toLowerCase().includes(term) ||
+                        (s.id_entite || '').toLowerCase().includes(term) ||
+                        drName.toLowerCase().includes(term)
+                      );
+                    });
+
+                    // 4. Regroupement hiérarchique : 1- Direction Régionale ➔ 2- Ville ou Localisation
+                    interface LocGroup {
+                      locName: string;
+                      structures: any[];
+                      totalRecu: number;
+                      totalLivre: number;
+                      totalStock: number;
+                    }
+
+                    interface DrGroup {
+                      drName: string;
+                      structures: any[];
+                      totalRecu: number;
+                      totalLivre: number;
+                      totalStock: number;
+                      locsMap: Map<string, LocGroup>;
+                    }
+
+                    const drGroupsMap = new Map<string, DrGroup>();
+
+                    filtered.forEach((st) => {
+                      const drName = (st.nom_parent || st.id_entite_parent || 'Sans Direction Régionale').trim();
+                      const locName = (st.localisation || 'Non renseignée').trim();
+
+                      if (!drGroupsMap.has(drName)) {
+                        drGroupsMap.set(drName, {
+                          drName,
+                          structures: [],
+                          totalRecu: 0,
+                          totalLivre: 0,
+                          totalStock: 0,
+                          locsMap: new Map(),
+                        });
+                      }
+
+                      const drGroup = drGroupsMap.get(drName)!;
+                      drGroup.structures.push(st);
+                      drGroup.totalRecu += Number(st.total_recu) || 0;
+                      drGroup.totalLivre += Number(st.total_livre) || 0;
+                      drGroup.totalStock += Number(st.solde_stock_disponible) || 0;
+
+                      if (!drGroup.locsMap.has(locName)) {
+                        drGroup.locsMap.set(locName, {
+                          locName,
+                          structures: [],
+                          totalRecu: 0,
+                          totalLivre: 0,
+                          totalStock: 0,
+                        });
+                      }
+
+                      const locGroup = drGroup.locsMap.get(locName)!;
+                      locGroup.structures.push(st);
+                      locGroup.totalRecu += Number(st.total_recu) || 0;
+                      locGroup.totalLivre += Number(st.total_livre) || 0;
+                      locGroup.totalStock += Number(st.solde_stock_disponible) || 0;
+                    });
+
+                    // Trier les DRs alphabétiquement
+                    const sortedDrGroups = Array.from(drGroupsMap.values()).sort((a, b) =>
+                      a.drName.localeCompare(b.drName, 'fr')
                     );
 
+                    // Trier les structures à l'intérieur de chaque ville
+                    sortedDrGroups.forEach((drGroup) => {
+                      drGroup.locsMap.forEach((locGroup) => {
+                        locGroup.structures.sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr'));
+                      });
+                    });
+
+                    // Totaux globaux des structures filtrées
+                    const totalRecuFiltered = filtered.reduce((acc, s) => acc + (Number(s.total_recu) || 0), 0);
+                    const totalLivreFiltered = filtered.reduce((acc, s) => acc + (Number(s.total_livre) || 0), 0);
+                    const totalStockFiltered = filtered.reduce((acc, s) => acc + (Number(s.solde_stock_disponible) || 0), 0);
+                    const totalLocsFiltered = sortedDrGroups.reduce((acc, g) => acc + g.locsMap.size, 0);
+
+                    // Helpers accordéon
+                    const handleToggleDr = (drName: string) => {
+                      const isCurrentOpen = expandedDrs[drName] !== false;
+                      setExpandedDrs((prev) => ({ ...prev, [drName]: !isCurrentOpen }));
+                    };
+
+                    const handleExpandAll = () => {
+                      const next: Record<string, boolean> = {};
+                      allDrs.forEach((dr) => {
+                        next[dr] = true;
+                      });
+                      setExpandedDrs(next);
+                    };
+
+                    const handleCollapseAll = () => {
+                      const next: Record<string, boolean> = {};
+                      allDrs.forEach((dr) => {
+                        next[dr] = false;
+                      });
+                      setExpandedDrs(next);
+                    };
+
                     return (
-                      <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs">
-                          <div className="text-[11px] text-slate-400 font-semibold">
-                            <span className="text-white font-bold">{filtered.length}</span> structure(s) affichée(s) sur {structuresList.length || stats?.totalEntites || 769}
+                      <div className="space-y-3.5">
+                        {/* Barre d'outils et sélecteurs de filtre */}
+                        <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2.5">
+                          {/* Ligne 1 : Filtre Direction Régionale, Sélecteur de vue & Actions Accordéon */}
+                          <div className="flex flex-wrap items-center justify-between gap-2.5">
+                            {/* Sélecteur de Direction Régionale */}
+                            <div className="flex-1 min-w-[260px]">
+                              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700/80 shadow-inner">
+                                <Building2 className="w-4 h-4 text-blue-400 shrink-0" />
+                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+                                  DR :
+                                </span>
+                                <select
+                                  value={structureSelectedDr}
+                                  onChange={(e) => setStructureSelectedDr(e.target.value)}
+                                  className="w-full bg-transparent text-xs font-semibold text-white focus:outline-none cursor-pointer truncate"
+                                >
+                                  <option value="ALL" className="bg-slate-900 text-white">
+                                    Toutes les Directions Régionales ({allDrs.length} DR — {structuresList.length} structures)
+                                  </option>
+                                  {allDrs.map((dr) => (
+                                    <option key={dr} value={dr} className="bg-slate-900 text-white">
+                                      {dr} ({structuresCountByDr[dr] || 0} structure{(structuresCountByDr[dr] || 0) > 1 ? 's' : ''})
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Bascule Mode Groupé / Liste Continue */}
+                            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5 gap-0.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setStructureViewMode('grouped')}
+                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                  structureViewMode === 'grouped'
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                                }`}
+                                title="Organisation hiérarchique : 1- Direction Régionale puis 2- Ville / Localisation"
+                              >
+                                <Layers className="w-3.5 h-3.5" />
+                                <span>Par DR & Ville</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setStructureViewMode('flat')}
+                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                  structureViewMode === 'flat'
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                                }`}
+                                title="Affichage continu sous forme de tableau plat"
+                              >
+                                <FileSpreadsheet className="w-3.5 h-3.5" />
+                                <span>Liste continue</span>
+                              </button>
+                            </div>
+
+                            {/* Boutons Déplier / Replier tout (en mode groupé) */}
+                            {structureViewMode === 'grouped' && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={handleExpandAll}
+                                  className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700/80 transition flex items-center gap-1 cursor-pointer active:scale-95"
+                                  title="Déplier toutes les Directions Régionales"
+                                >
+                                  <ChevronDown className="w-3 h-3 text-blue-400" />
+                                  <span>Tout déplier</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleCollapseAll}
+                                  className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700/80 transition flex items-center gap-1 cursor-pointer active:scale-95"
+                                  title="Replier toutes les Directions Régionales"
+                                >
+                                  <ChevronRight className="w-3 h-3 text-slate-400" />
+                                  <span>Tout replier</span>
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Bascule structures activité vs ministère */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextVal = !showAllMinistereStructures;
+                                setShowAllMinistereStructures(nextVal);
+                                openKpiModal('structures', undefined, nextVal);
+                              }}
+                              className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition cursor-pointer shrink-0 ${
+                                showAllMinistereStructures
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-slate-200'
+                              }`}
+                              title="Basculer entre structures de l'activité (535) et toutes les structures (769)"
+                            >
+                              {showAllMinistereStructures
+                                ? 'Natures de l\'activité (535)'
+                                : 'Tout le ministère (769)'}
+                            </button>
                           </div>
+
+                          {/* Ligne 2 : Filtres rapides par Nature d'entité */}
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-800/80">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 mr-1 flex items-center gap-1">
+                              <SlidersHorizontal className="w-3 h-3 text-slate-400" />
+                              <span>Nature :</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setStructureModalNature('ALL')}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                                structureModalNature === 'ALL'
+                                  ? 'bg-blue-600 text-white shadow-sm'
+                                  : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
+                              }`}
+                            >
+                              Toutes ({structuresList.length})
+                            </button>
+                            {availableNatures.map((nat) => {
+                              const countForNat = structuresList.filter(
+                                (s) =>
+                                  (s.id_nature || 'AUTRE').toUpperCase() === nat &&
+                                  (structureSelectedDr === 'ALL' ||
+                                    (s.nom_parent || s.id_entite_parent || 'Sans Direction Régionale').trim() === structureSelectedDr)
+                              ).length;
+                              return (
+                                <button
+                                  key={nat}
+                                  type="button"
+                                  onClick={() => setStructureModalNature(nat)}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                                    structureModalNature === nat
+                                      ? 'bg-blue-600 text-white shadow-sm'
+                                      : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800'
+                                  }`}
+                                >
+                                  <span>{nat}</span>
+                                  <span className="text-[10px] opacity-75 font-mono">({countForNat})</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Barre de synthèse des résultats & Bouton Export */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs">
+                          <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-400 font-semibold">
+                            <div>
+                              <span className="text-white font-bold">{filtered.length}</span> structure{filtered.length > 1 ? 's' : ''} affichée{filtered.length > 1 ? 's' : ''} sur{' '}
+                              <span className="text-slate-300 font-bold">{structuresList.length || stats?.totalEntites || 535}</span>
+                            </div>
+                            <span>•</span>
+                            <div className="text-blue-300">
+                              <span className="font-bold">{sortedDrGroups.length}</span> DR • <span className="font-bold">{totalLocsFiltered}</span> Ville{totalLocsFiltered > 1 ? 's' : ''} / Localité{totalLocsFiltered > 1 ? 's' : ''}
+                            </div>
+                            <span>•</span>
+                            <div>
+                              Reçues : <strong className="text-emerald-400 font-bold">{totalRecuFiltered.toLocaleString('fr-FR')}</strong>
+                            </div>
+                            <span>•</span>
+                            <div>
+                              Distribuées : <strong className="text-orange-400 font-bold">{totalLivreFiltered.toLocaleString('fr-FR')}</strong>
+                            </div>
+                            <span>•</span>
+                            <div className="flex items-center gap-1">
+                              <span>Stock :</span>
+                              {totalStockFiltered > 0 ? (
+                                <span className="px-1.5 py-0.2 rounded bg-purple-950/80 border border-purple-400/60 font-black text-purple-300 text-[11px] shadow-sm">
+                                  {totalStockFiltered.toLocaleString('fr-FR')}
+                                </span>
+                              ) : (
+                                <strong className="text-slate-500">0</strong>
+                              )}
+                            </div>
+                          </div>
+
                           <button
                             type="button"
                             onClick={() => handleExportStructuresExcel(filtered)}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-bold text-[11px] inline-flex items-center gap-1.5 transition active:scale-95 cursor-pointer self-start sm:self-auto"
+                            className="px-3 py-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-bold text-xs inline-flex items-center gap-1.5 transition active:scale-95 cursor-pointer self-start sm:self-auto shadow-sm"
                             title="Télécharger l'annuaire au format Excel (.xlsx)"
                           >
                             <Upload className="w-3.5 h-3.5" />
                             <span>Exporter l'Annuaire ({filtered.length})</span>
                           </button>
                         </div>
-                        <div className="overflow-x-auto rounded-xl border border-slate-800">
-                          <table className="w-full text-left border-collapse min-w-[700px] text-xs">
-                            <thead>
-                              <tr className="bg-slate-950/70 border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                <th className="py-2.5 px-3">Structure</th>
-                                <th className="py-2.5 px-3">Nature</th>
-                                <th className="py-2.5 px-3 text-right">Reçues</th>
-                                <th className="py-2.5 px-3 text-right">Distribuées</th>
-                                <th className="py-2.5 px-3 text-right">Solde Stock</th>
-                                <th className="py-2.5 px-3 text-center">Taux Distrib.</th>
-                                <th className="py-2.5 px-3 text-center">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800/60">
-                              {filtered.map((st) => (
-                                <tr key={st.id_entite} className="hover:bg-slate-800/30 transition group">
-                                  <td className="py-3 px-3">
-                                    <div className="font-bold text-white truncate max-w-[220px]">
-                                      {st.nom}
-                                    </div>
-                                    <div className="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap mt-0.5">
-                                      <span className="font-mono text-[9px] text-blue-400/80 bg-blue-950/40 px-1 rounded border border-blue-900/40">
-                                        {st.id_entite}
-                                      </span>
-                                      <span>•</span>
-                                      <span>{st.localisation || '-'}</span>
-                                      {(st.nom_parent || st.id_entite_parent) && (
-                                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/15 text-blue-300 border border-blue-500/25 font-medium">
-                                          {st.nom_parent || st.id_entite_parent}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="py-3 px-3">
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                                      {st.id_nature || st.sigle || 'STRUCTURE'}
-                                    </span>
-                                  </td>
-                                  <td className="py-3 px-3 text-right font-bold text-emerald-400">
-                                    {st.total_recu ? Number(st.total_recu).toLocaleString('fr-FR') : 0}
-                                  </td>
-                                  <td className="py-3 px-3 text-right font-bold text-orange-400">
-                                    {st.total_livre ? Number(st.total_livre).toLocaleString('fr-FR') : 0}
-                                  </td>
-                                  <td className="py-3 px-3 text-right font-bold text-purple-300">
-                                    {st.solde_stock_disponible
-                                      ? Number(st.solde_stock_disponible).toLocaleString('fr-FR')
-                                      : 0}
-                                  </td>
-                                  <td className="py-3 px-3 text-center">
-                                    <span className="text-[11px] font-bold text-slate-200">
-                                      {st.taux_distribution_pct || 0}%
-                                    </span>
-                                  </td>
-                                  <td className="py-3 px-3 text-center whitespace-nowrap">
-                                    <div className="inline-flex items-center gap-1.5">
-                                      <button
-                                        onClick={() => handleStartEditStructure(st)}
-                                        title="Modifier cette structure"
-                                        className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition active:scale-95 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+
+                        {/* Corps : Affichage conditionnel (Aucun résultat / Mode Groupé / Mode Plat) */}
+                        {filtered.length === 0 ? (
+                          <div className="p-10 text-center rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 space-y-3">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
+                              <Search className="w-6 h-6" />
+                            </div>
+                            <div className="text-sm font-bold text-white">Aucune structure trouvée</div>
+                            <p className="text-xs text-slate-400 max-w-md mx-auto">
+                              Aucune structure ne correspond à votre filtre actuel (DR, Nature ou mot-clé).
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setKpiSearch('');
+                                setStructureModalNature('ALL');
+                                setStructureSelectedDr('ALL');
+                              }}
+                              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition cursor-pointer shadow-sm"
+                            >
+                              Réinitialiser tous les filtres
+                            </button>
+                          </div>
+                        ) : structureViewMode === 'grouped' ? (
+                          /* === VUE GROUPÉE : 1- DIRECTION RÉGIONALE ➔ 2- VILLE OU LOCALISATION === */
+                          <div className="space-y-3">
+                            {sortedDrGroups.map((group) => {
+                              const isOpen = expandedDrs[group.drName] !== false;
+                              const drTaux = group.totalRecu > 0 ? Math.round((group.totalLivre / group.totalRecu) * 100) : 0;
+
+                              return (
+                                <div
+                                  key={group.drName}
+                                  className="rounded-2xl border border-slate-800 bg-slate-900/60 shadow-md overflow-hidden transition-all duration-200 hover:border-slate-700/80"
+                                >
+                                  {/* En-tête de la Direction Régionale (Cliquable pour déplier/replier) */}
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => handleToggleDr(group.drName)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') handleToggleDr(group.drName);
+                                    }}
+                                    className="w-full text-left p-3.5 sm:p-4 bg-slate-950/70 hover:bg-slate-900/90 transition flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none border-b border-slate-800/80"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div
+                                        className={`w-6 h-6 rounded-lg flex items-center justify-center transition-transform duration-200 shrink-0 ${
+                                          isOpen ? 'rotate-90 text-blue-400 bg-blue-500/10' : 'text-slate-500 bg-slate-800/60'
+                                        }`}
                                       >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                        <span>Modifier</span>
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setDeleteStructureError(null);
-                                          setDeleteConfirmStructure(st);
-                                        }}
-                                        title="Supprimer cette structure"
-                                        className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition active:scale-95 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                        <span>Supprimer</span>
-                                      </button>
+                                        <ChevronRight className="w-4 h-4" />
+                                      </div>
+
+                                      <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+                                        <Building2 className="w-5 h-5" />
+                                      </div>
+
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <h4 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
+                                            {group.drName}
+                                          </h4>
+                                          <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 font-mono">
+                                            {group.structures.length} structure{group.structures.length > 1 ? 's' : ''}
+                                          </span>
+                                          <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700/80">
+                                            {group.locsMap.size} ville{group.locsMap.size > 1 ? 's' : ''}
+                                          </span>
+                                        </div>
+                                      </div>
                                     </div>
-                                  </td>
+
+                                    {/* Synthèse chiffrée de la Direction Régionale */}
+                                    <div className="flex items-center gap-2 sm:gap-3 shrink-0 self-end md:self-auto flex-wrap">
+                                      <div className="text-right">
+                                        <div className="text-[10px] uppercase font-bold text-slate-400">Reçues</div>
+                                        <div className="text-xs sm:text-sm font-bold text-emerald-400">
+                                          {group.totalRecu.toLocaleString('fr-FR')}
+                                        </div>
+                                      </div>
+
+                                      <div className="w-px h-6 bg-slate-800 hidden sm:block" />
+
+                                      <div className="text-right">
+                                        <div className="text-[10px] uppercase font-bold text-slate-400">Distribuées</div>
+                                        <div className="text-xs sm:text-sm font-bold text-orange-400">
+                                          {group.totalLivre.toLocaleString('fr-FR')}
+                                        </div>
+                                      </div>
+
+                                      <div className="w-px h-6 bg-slate-800 hidden sm:block" />
+
+                                      <div className="text-right">
+                                        <div className="text-[10px] uppercase font-bold text-purple-300">En Stock</div>
+                                        {group.totalStock > 0 ? (
+                                          <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-purple-950/80 border border-purple-400/60 font-black text-xs sm:text-sm text-purple-300 shadow-sm ring-1 ring-purple-500/20">
+                                            <span className="font-black text-purple-300 drop-shadow-[0_0_8px_rgba(192,132,252,0.45)]">
+                                              {group.totalStock.toLocaleString('fr-FR')}
+                                            </span>
+                                          </span>
+                                        ) : (
+                                          <span className="text-xs text-slate-500 font-semibold">0</span>
+                                        )}
+                                      </div>
+
+                                      <div className="w-px h-6 bg-slate-800 hidden sm:block" />
+
+                                      <div className="text-right">
+                                        <div className="text-[10px] uppercase font-bold text-slate-400">Taux</div>
+                                        <div className="text-xs sm:text-sm font-bold text-slate-200">
+                                          {drTaux}%
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Contenu Déplié : Organisé par Ville ou Localisation */}
+                                  {isOpen && (
+                                    <div className="p-3 sm:p-4 space-y-3.5 bg-slate-950/40">
+                                      {Array.from(group.locsMap.entries())
+                                        .sort(([locA], [locB]) => locA.localeCompare(locB, 'fr'))
+                                        .map(([locName, locGroup]) => {
+                                          const locTaux =
+                                            locGroup.totalRecu > 0
+                                              ? Math.round((locGroup.totalLivre / locGroup.totalRecu) * 100)
+                                              : 0;
+
+                                          return (
+                                            <div
+                                              key={locName}
+                                              className="rounded-xl border border-slate-800/80 bg-slate-900/70 overflow-hidden shadow-sm"
+                                            >
+                                              {/* Bandeau Niveau 2 : Ville ou Localisation */}
+                                              <div className="px-3.5 py-2.5 bg-slate-900/90 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                  <div className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                                                    <MapPin className="w-3.5 h-3.5" />
+                                                  </div>
+                                                  <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">
+                                                    Ville / Localité :
+                                                  </span>
+                                                  <span className="text-xs sm:text-sm font-bold text-white">
+                                                    {locName}
+                                                  </span>
+                                                  <span className="text-xs text-slate-400 font-mono">
+                                                    ({locGroup.structures.length} structure{locGroup.structures.length > 1 ? 's' : ''})
+                                                  </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400 shrink-0">
+                                                  <span>
+                                                    Reçues :{' '}
+                                                    <strong className="text-emerald-400">
+                                                      {locGroup.totalRecu.toLocaleString('fr-FR')}
+                                                    </strong>
+                                                  </span>
+                                                  <span>•</span>
+                                                  <span>
+                                                    Distribuées :{' '}
+                                                    <strong className="text-orange-400">
+                                                      {locGroup.totalLivre.toLocaleString('fr-FR')}
+                                                    </strong>
+                                                  </span>
+                                                  <span>•</span>
+                                                  <span className="flex items-center gap-1">
+                                                    Stock :{' '}
+                                                    {locGroup.totalStock > 0 ? (
+                                                      <span className="px-1.5 py-0.2 rounded bg-purple-950/80 border border-purple-400/60 font-black text-purple-300">
+                                                        {locGroup.totalStock.toLocaleString('fr-FR')}
+                                                      </span>
+                                                    ) : (
+                                                      <strong className="text-slate-500">0</strong>
+                                                    )}
+                                                  </span>
+                                                  <span>•</span>
+                                                  <span>
+                                                    Taux : <strong className="text-slate-200">{locTaux}%</strong>
+                                                  </span>
+                                                </div>
+                                              </div>
+
+                                              {/* Tableau des structures pour cette Ville */}
+                                              <div className="overflow-x-auto">
+                                                <table className="w-full text-left border-collapse min-w-[700px] text-xs">
+                                                  <thead>
+                                                    <tr className="bg-slate-950/60 border-b border-slate-800/80 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                                      <th className="py-2.5 px-3">Structure</th>
+                                                      <th className="py-2.5 px-3">Nature</th>
+                                                      <th className="py-2.5 px-3 text-right">Reçues</th>
+                                                      <th className="py-2.5 px-3 text-right">Distribuées</th>
+                                                      <th className="py-2.5 px-3 text-right">Solde Stock</th>
+                                                      <th className="py-2.5 px-3 text-center">Taux</th>
+                                                      <th className="py-2.5 px-3 text-center">Actions</th>
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody className="divide-y divide-slate-800/50">
+                                                    {locGroup.structures.map((st) => {
+                                                      const natCode = (st.id_nature || st.sigle || 'STRUCTURE').toUpperCase();
+                                                      const meta = NATURE_META[natCode];
+                                                      return (
+                                                        <tr
+                                                          key={st.id_entite}
+                                                          className="hover:bg-slate-800/30 transition group"
+                                                        >
+                                                          <td className="py-2.5 px-3">
+                                                            <div className="font-bold text-white truncate max-w-[280px]">
+                                                              {st.nom}
+                                                            </div>
+                                                            <div className="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap mt-0.5">
+                                                              <span className="font-mono text-[9px] text-blue-400/90 bg-blue-950/40 px-1 rounded border border-blue-900/40">
+                                                                {st.id_entite}
+                                                              </span>
+                                                            </div>
+                                                          </td>
+                                                          <td className="py-2.5 px-3">
+                                                            <span
+                                                              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                                                meta ? meta.badge : 'bg-slate-800 text-slate-300 border-slate-700'
+                                                              }`}
+                                                            >
+                                                              {natCode}
+                                                            </span>
+                                                          </td>
+                                                          <td className="py-2.5 px-3 text-right font-bold text-emerald-400">
+                                                            {st.total_recu ? Number(st.total_recu).toLocaleString('fr-FR') : 0}
+                                                          </td>
+                                                          <td className="py-2.5 px-3 text-right font-bold text-orange-400">
+                                                            {st.total_livre ? Number(st.total_livre).toLocaleString('fr-FR') : 0}
+                                                          </td>
+                                                          <td className="py-2.5 px-3 text-right">
+                                                            {st.solde_stock_disponible && Number(st.solde_stock_disponible) > 0 ? (
+                                                              <span className="inline-flex items-center justify-end px-2 py-0.5 rounded-lg bg-purple-950/80 border border-purple-400/60 font-black text-xs text-purple-300 shadow-sm ring-1 ring-purple-500/20">
+                                                                <span className="font-black text-purple-300 drop-shadow-[0_0_8px_rgba(192,132,252,0.45)]">
+                                                                  {Number(st.solde_stock_disponible).toLocaleString('fr-FR')}
+                                                                </span>
+                                                              </span>
+                                                            ) : (
+                                                              <span className="text-slate-500 font-semibold text-xs">0</span>
+                                                            )}
+                                                          </td>
+                                                          <td className="py-2.5 px-3 text-center">
+                                                            <span className="text-[11px] font-bold text-slate-200">
+                                                              {st.taux_distribution_pct || 0}%
+                                                            </span>
+                                                          </td>
+                                                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                                                            <div className="inline-flex items-center gap-1.5">
+                                                              <button
+                                                                onClick={() => handleStartEditStructure(st)}
+                                                                title="Modifier cette structure"
+                                                                className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition active:scale-95 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                                                              >
+                                                                <Pencil className="w-3.5 h-3.5" />
+                                                                <span>Modifier</span>
+                                                              </button>
+                                                              <button
+                                                                onClick={() => router.push(`/livraisons?entite=${st.id_entite}`)}
+                                                                title="Effectuer une livraison pour cette structure"
+                                                                className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/20 transition active:scale-95 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                                                              >
+                                                                <Send className="w-3.5 h-3.5" />
+                                                                <span>Livrer</span>
+                                                              </button>
+                                                              <button
+                                                                onClick={() => {
+                                                                  setDeleteStructureError(null);
+                                                                  setDeleteConfirmStructure(st);
+                                                                }}
+                                                                title="Supprimer cette structure"
+                                                                className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition active:scale-95 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                                                              >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                <span>Supprimer</span>
+                                                              </button>
+                                                            </div>
+                                                          </td>
+                                                        </tr>
+                                                      );
+                                                    })}
+                                                  </tbody>
+                                                </table>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          /* === VUE CONTINUE : TABLEAU PLAT AVEC COLONNES DR ET VILLE === */
+                          <div className="overflow-x-auto rounded-xl border border-slate-800">
+                            <table className="w-full text-left border-collapse min-w-[900px] text-xs">
+                              <thead>
+                                <tr className="bg-slate-950/70 border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                  <th className="py-2.5 px-3">Structure</th>
+                                  <th className="py-2.5 px-3">Direction Régionale</th>
+                                  <th className="py-2.5 px-3">Ville / Localisation</th>
+                                  <th className="py-2.5 px-3">Nature</th>
+                                  <th className="py-2.5 px-3 text-right">Reçues</th>
+                                  <th className="py-2.5 px-3 text-right">Distribuées</th>
+                                  <th className="py-2.5 px-3 text-right">Solde Stock</th>
+                                  <th className="py-2.5 px-3 text-center">Taux Distrib.</th>
+                                  <th className="py-2.5 px-3 text-center">Actions</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/60">
+                                {filtered.map((st) => {
+                                  const natCode = (st.id_nature || st.sigle || 'STRUCTURE').toUpperCase();
+                                  const meta = NATURE_META[natCode];
+                                  return (
+                                    <tr key={st.id_entite} className="hover:bg-slate-800/30 transition group">
+                                      <td className="py-3 px-3">
+                                        <div className="font-bold text-white truncate max-w-[220px]">
+                                          {st.nom}
+                                        </div>
+                                        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap mt-0.5">
+                                          <span className="font-mono text-[9px] text-blue-400/80 bg-blue-950/40 px-1 rounded border border-blue-900/40">
+                                            {st.id_entite}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="py-3 px-3">
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-500/15 text-blue-300 border border-blue-500/25">
+                                          {st.nom_parent || st.id_entite_parent || 'Sans Direction Régionale'}
+                                        </span>
+                                      </td>
+                                      <td className="py-3 px-3">
+                                        <span className="font-semibold text-slate-300 flex items-center gap-1">
+                                          <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
+                                          <span>{st.localisation || '-'}</span>
+                                        </span>
+                                      </td>
+                                      <td className="py-3 px-3">
+                                        <span
+                                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                            meta ? meta.badge : 'bg-slate-800 text-slate-300 border-slate-700'
+                                          }`}
+                                        >
+                                          {natCode}
+                                        </span>
+                                      </td>
+                                      <td className="py-3 px-3 text-right font-bold text-emerald-400">
+                                        {st.total_recu ? Number(st.total_recu).toLocaleString('fr-FR') : 0}
+                                      </td>
+                                      <td className="py-3 px-3 text-right font-bold text-orange-400">
+                                        {st.total_livre ? Number(st.total_livre).toLocaleString('fr-FR') : 0}
+                                      </td>
+                                      <td className="py-3 px-3 text-right">
+                                        {st.solde_stock_disponible && Number(st.solde_stock_disponible) > 0 ? (
+                                          <span className="inline-flex items-center justify-end px-2 py-0.5 rounded-lg bg-purple-950/80 border border-purple-400/60 font-black text-xs sm:text-sm text-purple-300 shadow-sm ring-1 ring-purple-500/20">
+                                            <span className="font-black text-purple-300 drop-shadow-[0_0_8px_rgba(192,132,252,0.45)]">
+                                              {Number(st.solde_stock_disponible).toLocaleString('fr-FR')}
+                                            </span>
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-500 font-semibold text-xs">0</span>
+                                        )}
+                                      </td>
+                                      <td className="py-3 px-3 text-center">
+                                        <span className="text-[11px] font-bold text-slate-200">
+                                          {st.taux_distribution_pct || 0}%
+                                        </span>
+                                      </td>
+                                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                                        <div className="inline-flex items-center gap-1.5">
+                                          <button
+                                            onClick={() => handleStartEditStructure(st)}
+                                            title="Modifier cette structure"
+                                            className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 transition active:scale-95 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                                          >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                            <span>Modifier</span>
+                                          </button>
+                                          <button
+                                            onClick={() => router.push(`/livraisons?entite=${st.id_entite}`)}
+                                            title="Effectuer une livraison pour cette structure"
+                                            className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/20 transition active:scale-95 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                                          >
+                                            <Send className="w-3.5 h-3.5" />
+                                            <span>Livrer</span>
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              setDeleteStructureError(null);
+                                              setDeleteConfirmStructure(st);
+                                            }}
+                                            title="Supprimer cette structure"
+                                            className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition active:scale-95 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                            <span>Supprimer</span>
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     );
                   })()

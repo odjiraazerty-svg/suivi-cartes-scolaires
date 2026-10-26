@@ -11,6 +11,8 @@ export async function GET(request: Request) {
     const all = searchParams.get('all') === 'true';
     const parentsOnly = searchParams.get('parents_only') === 'true';
     const limitParam = searchParams.get('limit');
+    const concerneesOnly = searchParams.get('concernees_only') === 'true' || searchParams.get('concernees') === 'true';
+    const naturesParam = searchParams.get('natures') || searchParams.get('nature') || '';
 
     // Récupérer la liste des entités pouvant être parents (Directions Régionales et Centrales)
     if (parentsOnly) {
@@ -60,6 +62,26 @@ export async function GET(request: Request) {
       WHERE (e.actif = true OR e.actif IS NULL)
     `;
     const params: any[] = [anneeParam, cleanAnnee];
+
+    if (concerneesOnly) {
+      sql += ` AND e.id_nature IN (
+        SELECT DISTINCT e2.id_nature 
+        FROM entite e2 
+        WHERE e2.id_entite IN (
+          SELECT id_entite FROM reception_carte 
+          UNION 
+          SELECT id_entite FROM livraison_carte
+        ) AND e2.id_nature IS NOT NULL
+      )`;
+    }
+
+    if (naturesParam) {
+      const nList = naturesParam.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean);
+      if (nList.length > 0) {
+        params.push(nList);
+        sql += ` AND UPPER(TRIM(e.id_nature)) = ANY($${params.length})`;
+      }
+    }
 
     if (stockOnly) {
       sql += ` AND (COALESCE(r.total_recu, 0) - COALESCE(l.total_livre, 0)) > 0`;
