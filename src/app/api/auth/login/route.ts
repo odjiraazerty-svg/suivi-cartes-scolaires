@@ -31,7 +31,12 @@ export async function POST(request: Request) {
 
     const sessionToken = encodeSession(user);
     const userRole = (user.role || 'USER').toUpperCase();
-    const redirectTo = userRole === 'ADMIN' ? '/admin' : '/user';
+    const redirectTo =
+      userRole === 'ADMIN'
+        ? '/admin'
+        : userRole === 'DRH' || userRole === 'ADMIN_DRH'
+          ? '/drh'
+          : '/user';
 
     const response = NextResponse.json({
       success: true,

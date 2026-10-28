@@ -10,6 +10,8 @@ export default async function RootPage() {
 
   if (user.role === 'ADMIN') {
     redirect('/admin');
+  } else if (user.role === 'DRH' || user.role === 'ADMIN_DRH') {
+    redirect('/drh');
   } else {
     redirect('/user');
   }

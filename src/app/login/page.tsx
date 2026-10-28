@@ -14,19 +14,29 @@ import {
   AlertCircle,
   CheckCircle2,
   Sparkles,
-  User,
-  UserPlus,
   LogIn,
+  Info,
+  Briefcase,
+  Clock,
 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
 
   // Détecter si on est en développement local (localhost / 127.0.0.1)
   const [isLocalDev, setIsLocalDev] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [inactivityNotice, setInactivityNotice] = useState(false);
 
   useEffect(() => {
+    // Vérifier si la redirection provient d'une expiration d'inactivité
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('reason') === 'inactivity') {
+        setInactivityNotice(true);
+      }
+    }
+
     // Réinitialiser le filtre sur l'année scolaire en cours par défaut après déconnexion ou retour sur login
     try {
       localStorage.removeItem('mffe_selected_annee_scolaire');
@@ -44,27 +54,17 @@ export default function LoginPage() {
     }
   }, []);
 
-  const setPresetUser = (presetEmail: string, presetPass: string) => {
+  const setPresetUser = (presetEmail: string, presetPass: string, presetKey: string) => {
     setEmail(presetEmail);
     setPassword(presetPass);
+    setSelectedPreset(presetKey);
     setError(null);
-    setMode('login');
   };
 
   // État formulaire Connexion
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-  // État formulaire Inscription
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regConfirmPassword, setRegConfirmPassword] = useState('');
-  const [regRole, setRegRole] = useState<'USER' | 'ADMIN'>('USER');
-
-  // Visibilité des mots de passe
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +90,6 @@ export default function LoginPage() {
         throw new Error(data.error || 'Identifiants incorrects');
       }
 
-      // Réinitialiser le filtre pour garantir l'affichage de l'année scolaire en cours
       try {
         localStorage.removeItem('mffe_selected_annee_scolaire');
         sessionStorage.removeItem('mffe_selected_annee_scolaire');
@@ -98,73 +97,17 @@ export default function LoginPage() {
 
       setSuccess(`Bienvenue, ${data.user.name} ! Redirection en cours...`);
       setTimeout(() => {
-        router.push(data.redirectTo || (data.user.role === 'ADMIN' ? '/admin' : '/user'));
+        router.push(
+          data.redirectTo ||
+            (data.user.role === 'ADMIN'
+              ? '/admin'
+              : data.user.role === 'DRH' || data.user.role === 'ADMIN_DRH'
+              ? '/drh'
+              : '/user')
+        );
       }, 700);
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue lors de la connexion');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Soumission Inscription
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    if (!regName.trim()) {
-      setError('Veuillez renseigner votre nom et prénoms.');
-      return;
-    }
-
-    if (!regEmail.trim()) {
-      setError('Veuillez renseigner votre adresse email.');
-      return;
-    }
-
-    if (regPassword.length < 6) {
-      setError('Le mot de passe doit comporter au moins 6 caractères.');
-      return;
-    }
-
-    if (regPassword !== regConfirmPassword) {
-      setError('Les mots de passe saisis ne sont pas identiques.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: regName.trim(),
-          email: regEmail.trim(),
-          password: regPassword,
-          role: regRole,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Erreur lors de la création du compte.");
-      }
-
-      // Réinitialiser le filtre pour garantir l'affichage de l'année scolaire en cours
-      try {
-        localStorage.removeItem('mffe_selected_annee_scolaire');
-        sessionStorage.removeItem('mffe_selected_annee_scolaire');
-      } catch (e) {}
-
-      setSuccess(`Compte créé avec succès ! Bienvenue, ${data.user.name}. Redirection...`);
-      setTimeout(() => {
-        router.push(data.redirectTo || (data.user.role === 'ADMIN' ? '/admin' : '/user'));
-      }, 900);
-    } catch (err: any) {
-      setError(err.message || "Une erreur est survenue lors de l'inscription.");
     } finally {
       setLoading(false);
     }
@@ -190,7 +133,7 @@ export default function LoginPage() {
         </h2>
       </header>
 
-      {/* Carte Principale : Connexion & Inscription */}
+      {/* Carte Principale : Authentification */}
       <main className="w-full max-w-md mx-auto my-auto animate-fade-in">
         <div className="relative rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-slate-800 shadow-2xl shadow-orange-950/20 p-5 sm:p-8">
           {/* Titre et Badge */}
@@ -203,47 +146,27 @@ export default function LoginPage() {
               Suivi Cartes Scolaires
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              {mode === 'login'
-                ? 'Portail sécurisé de gestion des flux de cartes'
-                : 'Créez votre compte agent ou administrateur'}
+              Portail sécurisé d'authentification et de pilotage
             </p>
           </div>
 
-          {/* Sélecteur d'Onglets Connexion / Inscription */}
-          <div className="grid grid-cols-2 p-1 mb-5 bg-slate-950/80 border border-slate-800 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('login');
-                setError(null);
-                setSuccess(null);
-              }}
-              className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 ${
-                mode === 'login'
-                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg shadow-orange-600/25'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Connexion</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('register');
-                setError(null);
-                setSuccess(null);
-              }}
-              className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 ${
-                mode === 'register'
-                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg shadow-orange-600/25'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Inscription</span>
-            </button>
+          {/* Bandeau d'information sur la création de compte */}
+          <div className="mb-5 p-3 rounded-2xl bg-slate-950/70 border border-slate-800 flex items-start gap-2.5 text-xs text-slate-300">
+            <ShieldCheck className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+            <div className="leading-snug">
+              <span className="font-bold text-white">Accès Réglementé :</span> La création et l'attribution des comptes sont réservées exclusivement à l'Administrateur du système.
+            </div>
           </div>
+
+          {/* Alerte d'inactivité de session (10 minutes) */}
+          {inactivityNotice && (
+            <div className="mb-4 p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs sm:text-sm flex items-start gap-2.5 animate-fade-in shadow-lg shadow-amber-500/10">
+              <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
+              <div className="leading-snug">
+                <span className="font-bold text-amber-300">Session expirée :</span> Votre session a été automatiquement fermée suite à 10 minutes d'inactivité pour garantir la sécurité de vos données. Veuillez vous reconnecter.
+              </div>
+            </div>
+          )}
 
           {/* Alertes d'erreur ou succès */}
           {error && (
@@ -260,310 +183,181 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* 1. FORMULAIRE DE CONNEXION */}
-          {mode === 'login' ? (
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-                  Adresse Email
+          {/* FORMULAIRE DE CONNEXION */}
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Adresse Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setSelectedPreset(null);
+                  }}
+                  placeholder="nom@mffe.gouv.ci"
+                  required
+                  autoComplete="email"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-950/60 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                  Mot de passe
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nom@mffe.gouv.ci"
-                    required
-                    autoComplete="email"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-950/60 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                  />
-                </div>
+                <span className="text-xs text-orange-400/90 font-medium">
+                  Connexion sécurisée
+                </span>
               </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                    Mot de passe
-                  </label>
-                  <span className="text-xs text-orange-400/90 hover:underline cursor-pointer">
-                    Aide connexion ?
-                  </span>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Lock className="w-5 h-5" />
                 </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    required
-                    autoComplete="current-password"
-                    className="w-full pl-11 pr-12 py-3 bg-slate-950/60 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white transition"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Bouton de Soumission Connexion */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-2 py-3.5 px-6 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold rounded-xl shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2 text-sm sm:text-base active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Connexion en cours...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Se connecter</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
-              </button>
-            </form>
-          ) : (
-            /* 2. FORMULAIRE D'INSCRIPTION */
-            <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">
-                  Nom & Prénoms complets
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="text"
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                    placeholder="ex: KOUADIO Marc"
-                    required
-                    autoComplete="name"
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">
-                  Adresse Email Professionnelle
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="email"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="nom.prenom@mffe.gouv.ci"
-                    required
-                    autoComplete="email"
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">
-                  Profil d'accès souhaité
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRegRole('USER')}
-                    className={`p-2.5 rounded-xl border text-left flex flex-col gap-0.5 transition ${
-                      regRole === 'USER'
-                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 ring-1 ring-emerald-500/40'
-                        : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-xs font-bold">
-                      <Building2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Agent / Terrain</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400">Saisies & distribution</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setRegRole('ADMIN')}
-                    className={`p-2.5 rounded-xl border text-left flex flex-col gap-0.5 transition ${
-                      regRole === 'ADMIN'
-                        ? 'bg-orange-500/15 border-orange-500/40 text-orange-300 ring-1 ring-orange-500/40'
-                        : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-xs font-bold">
-                      <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
-                      <span>Administrateur</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400">Pilotage DRH</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">
-                    Mot de passe
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                      <Lock className="w-3.5 h-3.5" />
-                    </div>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="Min. 6 caractères"
-                      required
-                      minLength={6}
-                      className="w-full pl-8 pr-8 py-2 bg-slate-950/60 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-white"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">
-                    Confirmer
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                      <Lock className="w-3.5 h-3.5" />
-                    </div>
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={regConfirmPassword}
-                      onChange={(e) => setRegConfirmPassword(e.target.value)}
-                      placeholder="Confirmer"
-                      required
-                      minLength={6}
-                      className="w-full pl-8 pr-8 py-2 bg-slate-950/60 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 transition"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-white"
-                      tabIndex={-1}
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bouton de Soumission Inscription */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-3 py-3.5 px-6 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold rounded-xl shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2 text-sm sm:text-base active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Création du compte...</span>
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="w-4 h-4" />
-                    <span>Créer mon compte</span>
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-
-          {/* Lien de bascule sous le formulaire */}
-          <div className="text-center pt-4">
-            {mode === 'login' ? (
-              <p className="text-xs text-slate-400">
-                Vous n'avez pas encore de compte ?{' '}
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setSelectedPreset(null);
+                  }}
+                  placeholder="••••••••••••"
+                  required
+                  autoComplete="current-password"
+                  className="w-full pl-11 pr-12 py-3 bg-slate-950/60 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
+                />
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode('register');
-                    setError(null);
-                    setSuccess(null);
-                  }}
-                  className="text-orange-400 hover:text-orange-300 font-semibold underline underline-offset-2 transition"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white transition"
+                  tabIndex={-1}
                 >
-                  Créer un compte
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
-              </p>
-            ) : (
-              <p className="text-xs text-slate-400">
-                Vous possédez déjà un compte ?{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('login');
-                    setError(null);
-                    setSuccess(null);
-                  }}
-                  className="text-orange-400 hover:text-orange-300 font-semibold underline underline-offset-2 transition"
-                >
-                  Se connecter
-                </button>
-              </p>
-            )}
+              </div>
+            </div>
+
+            {/* Bouton de Soumission Connexion */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-2 py-3.5 px-6 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold rounded-xl shadow-lg shadow-orange-600/30 flex items-center justify-center gap-2 text-sm sm:text-base active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Connexion en cours...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-5 h-5" />
+                  <span>Se connecter</span>
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Note d'assistance bas de carte */}
+          <div className="mt-5 p-3 rounded-xl bg-slate-950/40 border border-slate-800/80 text-center text-xs text-slate-400 flex items-center justify-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span>Besoin d'un accès ? Rapprochez-vous de la Direction RH / Administrateur.</span>
           </div>
 
           {/* Raccourcis de Test Rapide — UNIQUEMENT VISIBLES EN DÉVELOPPEMENT LOCAL */}
-          {mode === 'login' && isLocalDev && (
+          {isLocalDev && (
             <div className="mt-5 pt-4 border-t border-slate-800/80">
               <div className="flex items-center justify-between mb-2.5">
-                <p className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+                <p className="text-xs text-slate-300 font-semibold flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Comptes de test (Local uniquement) :</span>
+                  <span>Comptes de test (Local) :</span>
                 </p>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                  Dev Local
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 font-medium">
+                  Environnement Local
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
+                {/* 1. Administrateur Principal */}
                 <button
                   type="button"
-                  onClick={() => setPresetUser('admin@mffe.gouv.ci', 'Password123!')}
-                  className="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-left transition text-xs flex flex-col gap-0.5 active:scale-95"
+                  onClick={() => setPresetUser('admin@mffe.gouv.ci', 'Password123!', 'admin_mffe')}
+                  className={`p-2.5 rounded-xl border text-left transition text-xs flex flex-col gap-0.5 active:scale-95 cursor-pointer group ${
+                    selectedPreset === 'admin_mffe'
+                      ? 'bg-orange-500/15 border-orange-500 text-white shadow-md shadow-orange-500/10'
+                      : 'bg-slate-950/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                  }`}
                 >
-                  <span className="font-semibold text-orange-400 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Admin
-                  </span>
-                  <span className="text-slate-400 truncate">admin@mffe.gouv.ci</span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-orange-400 flex items-center gap-1 group-hover:text-orange-300">
+                      <ShieldCheck className="w-3.5 h-3.5" /> Admin MFFE
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">/admin</span>
+                  </div>
+                  <span className="text-slate-400 text-[11px] truncate">admin@mffe.gouv.ci</span>
                 </button>
 
+                {/* 2. Direction RH */}
                 <button
                   type="button"
-                  onClick={() => setPresetUser('agent.drabj@mffe.gouv.ci', 'Password123!')}
-                  className="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-left transition text-xs flex flex-col gap-0.5 active:scale-95"
+                  onClick={() => setPresetUser('drh@mffe.gouv.ci', 'Password123!', 'drh')}
+                  className={`p-2.5 rounded-xl border text-left transition text-xs flex flex-col gap-0.5 active:scale-95 cursor-pointer group ${
+                    selectedPreset === 'drh'
+                      ? 'bg-purple-500/15 border-purple-500 text-white shadow-md shadow-purple-500/10'
+                      : 'bg-slate-950/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                  }`}
                 >
-                  <span className="font-semibold text-emerald-400 flex items-center gap-1">
-                    <Building2 className="w-3.5 h-3.5" /> Utilisateur
-                  </span>
-                  <span className="text-slate-400 truncate">agent.drabj@mffe...</span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-purple-400 flex items-center gap-1 group-hover:text-purple-300">
+                      <Briefcase className="w-3.5 h-3.5" /> Direction DRH
+                    </span>
+                    <span className="text-[10px] text-purple-400/80 font-mono font-medium">/drh</span>
+                  </div>
+                  <span className="text-slate-400 text-[11px] truncate">drh@mffe.gouv.ci</span>
+                </button>
+
+                {/* 3. Agent Opérationnel / Terrain */}
+                <button
+                  type="button"
+                  onClick={() => setPresetUser('agent.drabj@mffe.gouv.ci', 'Password123!', 'agent_terrain')}
+                  className={`p-2.5 rounded-xl border text-left transition text-xs flex flex-col gap-0.5 active:scale-95 cursor-pointer group ${
+                    selectedPreset === 'agent_terrain'
+                      ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-md shadow-emerald-500/10'
+                      : 'bg-slate-950/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-emerald-400 flex items-center gap-1 group-hover:text-emerald-300">
+                      <Building2 className="w-3.5 h-3.5" /> Agent Terrain
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">/user</span>
+                  </div>
+                  <span className="text-slate-400 text-[11px] truncate">agent.drabj@mffe...</span>
+                </button>
+
+                {/* 4. Admin Odjira */}
+                <button
+                  type="button"
+                  onClick={() => setPresetUser('odjira@gmail.com', 'Password123!', 'admin_odjira')}
+                  className={`p-2.5 rounded-xl border text-left transition text-xs flex flex-col gap-0.5 active:scale-95 cursor-pointer group ${
+                    selectedPreset === 'admin_odjira'
+                      ? 'bg-amber-500/15 border-amber-500 text-white shadow-md shadow-amber-500/10'
+                      : 'bg-slate-950/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-amber-400 flex items-center gap-1 group-hover:text-amber-300">
+                      <ShieldCheck className="w-3.5 h-3.5" /> Admin ODJIRA
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">/admin</span>
+                  </div>
+                  <span className="text-slate-400 text-[11px] truncate">odjira@gmail.com</span>
                 </button>
               </div>
             </div>

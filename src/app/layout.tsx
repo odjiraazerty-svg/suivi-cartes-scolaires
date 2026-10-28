@@ -3,6 +3,7 @@ import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import ThemeSelectorModal from '@/components/ThemeSelectorModal';
 import ThemeToggleButton from '@/components/ThemeToggleButton';
+import SessionIdleTracker from '@/components/SessionIdleTracker';
 
 export const metadata: Metadata = {
   title: 'Suivi des Cartes Scolaires | MFFE Côte d’Ivoire',
@@ -57,6 +58,7 @@ export default function RootLayout({
           {children}
           <ThemeSelectorModal />
           <ThemeToggleButton variant="floating" />
+          <SessionIdleTracker />
         </ThemeProvider>
       </body>
     </html>
