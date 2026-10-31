@@ -131,34 +131,52 @@ export async function GET(request: Request) {
     const soldeJour = totalRecuJour - totalLivreJour;
     const tauxDistributionJour = totalRecuJour > 0 ? Number(((totalLivreJour / totalRecuJour) * 100).toFixed(1)) : 0;
 
-    // Détail des réceptions du jour pour l'année scolaire
+    // Détail des réceptions du jour pour l'année scolaire (avec Direction Régionale de rattachement)
     const receptionsJour = await query(
       `SELECT r.id, r.id_entite, r.date_reception, r.quantite_recue, r.annee_scolaire, 
               r.reference_bordereau, r.receptionnaire_nom, r.observations, r.created_at, 
               e.nom as nom_entite, e.sigle, e.localisation, e.id_nature,
-              u.name as auteur_nom
+              u.name as auteur_nom,
+              e.id_entite_parent, dr.nom as nom_parent,
+              COALESCE(
+                dr.nom, 
+                CASE 
+                  WHEN e.localisation ILIKE '%ABIDJAN%' THEN 'Direction Régionale Abidjan'
+                  ELSE 'Direction Régionale ' || COALESCE(e.localisation, 'Non précisée')
+                END
+              ) as region
        FROM reception_carte r
        JOIN entite e ON r.id_entite = e.id_entite
+       LEFT JOIN entite dr ON e.id_entite_parent = dr.id_entite
        LEFT JOIN public."user" u ON r.id_user = u.id
        WHERE r.date_reception = $1
          AND ($2::text IS NULL OR r.annee_scolaire = $2 OR replace(r.annee_scolaire, ' ', '') = $3)
-       ORDER BY r.created_at DESC`,
+       ORDER BY region ASC, e.id_nature DESC, r.id_entite ASC`,
       [targetDate, anneeParam, cleanAnnee]
     );
 
-    // Détail des livraisons du jour pour l'année scolaire
+    // Détail des livraisons du jour pour l'année scolaire (avec Direction Régionale de rattachement)
     const livraisonsJour = await query(
       `SELECT l.id, l.id_entite, l.date_livraison, l.quantite_livree, l.annee_scolaire, 
               l.destinataire_nom, l.reference_decharge, l.mode_livraison, l.observations, l.created_at,
               l.receptionne_par, l.contact_receptionnaire, l.cout_livraison,
               e.nom as nom_entite, e.sigle, e.localisation, e.id_nature,
-              u.name as auteur_nom
+              u.name as auteur_nom,
+              e.id_entite_parent, dr.nom as nom_parent,
+              COALESCE(
+                dr.nom, 
+                CASE 
+                  WHEN e.localisation ILIKE '%ABIDJAN%' THEN 'Direction Régionale Abidjan'
+                  ELSE 'Direction Régionale ' || COALESCE(e.localisation, 'Non précisée')
+                END
+              ) as region
        FROM livraison_carte l
        JOIN entite e ON l.id_entite = e.id_entite
+       LEFT JOIN entite dr ON e.id_entite_parent = dr.id_entite
        LEFT JOIN public."user" u ON l.id_user = u.id
        WHERE l.date_livraison = $1
          AND ($2::text IS NULL OR l.annee_scolaire = $2 OR replace(l.annee_scolaire, ' ', '') = $3)
-       ORDER BY l.created_at DESC`,
+       ORDER BY region ASC, e.id_nature DESC, l.id_entite ASC`,
       [targetDate, anneeParam, cleanAnnee]
     );
 

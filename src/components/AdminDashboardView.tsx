@@ -2104,7 +2104,7 @@ export default function AdminDashboardView({ isDrh = false }: { isDrh?: boolean 
           </div>
 
           {!isDrhMode ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
               <button
                 onClick={() => router.push('/receptions')}
                 className="p-3.5 rounded-2xl bg-slate-900/70 hover:bg-slate-900/90 border border-slate-800 hover:border-emerald-500/50 flex flex-col items-center justify-center text-center gap-2 transition active:scale-95 group shadow-md"
@@ -2123,6 +2123,22 @@ export default function AdminDashboardView({ isDrh = false }: { isDrh?: boolean 
                   <Send className="w-5 h-5" />
                 </div>
                 <span className="text-xs font-bold text-slate-200">Enregistrer Livraison</span>
+              </button>
+
+              {/* Vue Cartographique du Stock (Carte CI avec régions ayant des cartes en stock) */}
+              <button
+                type="button"
+                onClick={() => router.push('/cartographie?filter=stock_only')}
+                className="p-3.5 rounded-2xl bg-slate-900/70 hover:bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 flex flex-col items-center justify-center text-center gap-2 transition active:scale-95 group shadow-md cursor-pointer"
+                title="Visualiser la carte de Côte d'Ivoire des régions avec cartes en stock"
+              >
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-cyan-500/30 transition">
+                  <MapPin className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-xs font-bold text-slate-200 group-hover:text-cyan-400 transition">Vue Cartographique</span>
+                  <span className="text-[10px] text-cyan-300/80 font-medium">Stock par Région</span>
+                </div>
               </button>
 
               {/* Importer Bordereau (Action Rapide Administrateur MFFE) */}
@@ -3040,7 +3056,11 @@ export default function AdminDashboardView({ isDrh = false }: { isDrh?: boolean 
                                   {!isDrhMode && (
                                     <td className="py-3 px-3 text-center">
                                       <button
-                                        onClick={() => router.push(`/livraisons?entite=${st.id_entite}`)}
+                                        onClick={() =>
+                                          router.push(
+                                            `/livraisons?entite=${encodeURIComponent(st.id_entite)}&quantite=${st.solde_stock_disponible || 0}`
+                                          )
+                                        }
                                         title="Effectuer une livraison pour cette structure"
                                         className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/20 transition active:scale-95 inline-flex items-center gap-1 text-[11px] font-semibold"
                                       >
@@ -3655,7 +3675,11 @@ export default function AdminDashboardView({ isDrh = false }: { isDrh?: boolean 
                                                                   <span>Modifier</span>
                                                                 </button>
                                                                 <button
-                                                                  onClick={() => router.push(`/livraisons?entite=${st.id_entite}`)}
+                                                                  onClick={() =>
+                                                                    router.push(
+                                                                      `/livraisons?entite=${encodeURIComponent(st.id_entite)}&quantite=${st.solde_stock_disponible || 0}`
+                                                                    )
+                                                                  }
                                                                   title="Effectuer une livraison pour cette structure"
                                                                   className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/20 transition active:scale-95 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
                                                                 >
@@ -3778,7 +3802,11 @@ export default function AdminDashboardView({ isDrh = false }: { isDrh?: boolean 
                                               <span>Modifier</span>
                                             </button>
                                             <button
-                                              onClick={() => router.push(`/livraisons?entite=${st.id_entite}`)}
+                                              onClick={() =>
+                                                router.push(
+                                                  `/livraisons?entite=${encodeURIComponent(st.id_entite)}&quantite=${st.solde_stock_disponible || 0}`
+                                                )
+                                              }
                                               title="Effectuer une livraison pour cette structure"
                                               className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/20 transition active:scale-95 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
                                             >
@@ -3950,6 +3978,50 @@ export default function AdminDashboardView({ isDrh = false }: { isDrh?: boolean 
                   )}
                 </div>
 
+                {/* Boutons d'export certifiés (Word, Excel, PDF) : 2 colonnes ID STRUCTURE et QUANTITÉ ordonnées par Région */}
+                {(activeDayModal === 'receptions_jour' || activeDayModal === 'livraisons_jour') && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] text-slate-400 font-semibold mr-1 hidden sm:inline">
+                      Export Régional :
+                    </span>
+                    {/* Export Word (.docx) */}
+                    <a
+                      href={`/api/export-activite-jour?type=${activeDayModal === 'receptions_jour' ? 'receptions' : 'livraisons'}&format=docx&date=${selectedDate}&annee_scolaire=${encodeURIComponent(selectedAnneeScolaire)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm"
+                      title="Télécharger en Word (.docx) : ID STRUCTURE et QUANTITÉ uniquement, ordonné par région, IFEF en orange et autres en vert"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Word</span>
+                    </a>
+
+                    {/* Export Excel (.xlsx) */}
+                    <a
+                      href={`/api/export-activite-jour?type=${activeDayModal === 'receptions_jour' ? 'receptions' : 'livraisons'}&format=xlsx&date=${selectedDate}&annee_scolaire=${encodeURIComponent(selectedAnneeScolaire)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm"
+                      title="Télécharger en Excel (.xlsx) : ID STRUCTURE et QUANTITÉ uniquement, ordonné par région, IFEF en orange et autres en vert"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Excel</span>
+                    </a>
+
+                    {/* Export PDF / Impression (.pdf) */}
+                    <a
+                      href={`/api/export-activite-jour?type=${activeDayModal === 'receptions_jour' ? 'receptions' : 'livraisons'}&format=pdf&date=${selectedDate}&annee_scolaire=${encodeURIComponent(selectedAnneeScolaire)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm"
+                      title="Ouvrir la vue imprimable / PDF : ID STRUCTURE et QUANTITÉ uniquement, ordonné par région, IFEF en orange et autres en vert"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-rose-400" />
+                      <span>PDF</span>
+                    </a>
+                  </div>
+                )}
+
                 {!isDrhMode && activeDayModal === 'receptions_jour' && (
                   <button
                     type="button"
@@ -4046,8 +4118,19 @@ export default function AdminDashboardView({ isDrh = false }: { isDrh?: boolean 
                                       )}
                                       {r.localisation && <span>{r.localisation}</span>}
                                       {r.id_nature && (
-                                        <span className="px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 text-[9px] font-semibold">
+                                        <span
+                                          className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${
+                                            r.id_nature === 'IFEF'
+                                              ? 'bg-orange-500/15 text-orange-400 border-orange-500/30'
+                                              : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                          }`}
+                                        >
                                           {r.id_nature}
+                                        </span>
+                                      )}
+                                      {r.region && (
+                                        <span className="px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-[9px] font-medium truncate max-w-[130px]" title={r.region}>
+                                          {r.region.replace(/^Direction Régionale\s*(de\s*|du\s*|d'\s*|des\s*)?/i, 'DR ')}
                                         </span>
                                       )}
                                     </div>
@@ -4176,8 +4259,19 @@ export default function AdminDashboardView({ isDrh = false }: { isDrh?: boolean 
                                       )}
                                       {l.localisation && <span>{l.localisation}</span>}
                                       {l.id_nature && (
-                                        <span className="px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 text-[9px] font-semibold">
+                                        <span
+                                          className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${
+                                            l.id_nature === 'IFEF'
+                                              ? 'bg-orange-500/15 text-orange-400 border-orange-500/30'
+                                              : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                          }`}
+                                        >
                                           {l.id_nature}
+                                        </span>
+                                      )}
+                                      {l.region && (
+                                        <span className="px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-[9px] font-medium truncate max-w-[130px]" title={l.region}>
+                                          {l.region.replace(/^Direction Régionale\s*(de\s*|du\s*|d'\s*|des\s*)?/i, 'DR ')}
                                         </span>
                                       )}
                                     </div>

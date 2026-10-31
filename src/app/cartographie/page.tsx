@@ -120,8 +120,33 @@ export default function CartographiePage() {
       setData(json);
 
       if (json.regions.length > 0) {
-        const defaultReg = json.regions.find((r) => r.totalRecu > 0) || json.regions[0];
-        setSelectedRegionId((prev) => prev || defaultReg.id);
+        // Vérifier si un filtre initial ou région est passé en URL
+        let initialRegionId: string | null = null;
+        if (typeof window !== 'undefined') {
+          const sp = new URLSearchParams(window.location.search);
+          const filterParam = sp.get('filter');
+          const regParam = sp.get('region');
+          if (filterParam === 'stock_only') {
+            setSelectedStatus('EN_STOCK');
+          }
+          if (regParam) {
+            const found = json.regions.find(
+              (r) =>
+                r.id.toLowerCase() === regParam.toLowerCase() ||
+                r.nom.toLowerCase() === regParam.toLowerCase() ||
+                r.chefLieu.toLowerCase() === regParam.toLowerCase()
+            );
+            if (found) initialRegionId = found.id;
+          }
+        }
+
+        const defaultReg =
+          (initialRegionId && json.regions.find((r) => r.id === initialRegionId)) ||
+          json.regions.find((r) => r.soldeStock > 0) ||
+          json.regions.find((r) => r.totalRecu > 0) ||
+          json.regions[0];
+
+        setSelectedRegionId((prev) => (initialRegionId ? initialRegionId : prev || defaultReg.id));
       }
     } catch (err: any) {
       setError(err.message || 'Erreur inconnue');
@@ -153,6 +178,7 @@ export default function CartographiePage() {
 
       const matchStatus =
         selectedStatus === 'TOUS' ||
+        (selectedStatus === 'EN_STOCK' && r.soldeStock > 0) ||
         (selectedStatus === 'DOTEES' && r.totalRecu > 0) ||
         (selectedStatus === 'NON_DOTEES' && r.totalRecu === 0) ||
         (selectedStatus === 'DISTRIBUEES' && r.totalDistribue > 0) ||
@@ -456,6 +482,7 @@ export default function CartographiePage() {
               className="py-2 px-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
             >
               <option value="TOUS">Tous les statuts</option>
+              <option value="EN_STOCK">🟣 Régions avec cartes en stock</option>
               <option value="DOTEES">Dotées (Reçu &gt; 0)</option>
               <option value="COUVERTES">Fortement distribuées (&ge; 80%)</option>
               <option value="DISTRIBUEES">En cours de distribution</option>
@@ -646,15 +673,21 @@ export default function CartographiePage() {
                         <stop offset="100%" stopColor="#6d28d9" stopOpacity={mapTheme === 'sombre' ? '0.9' : '0.75'} />
                       </linearGradient>
 
+                      {/* Gradient neutre / stock épuisé ou nul (Régions à stock = 0 en blanc) */}
+                      <linearGradient id="grad-zero-stock" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#ffffff" stopOpacity={mapTheme === 'sombre' ? '0.92' : '0.98'} />
+                        <stop offset="100%" stopColor="#f1f5f9" stopOpacity={mapTheme === 'sombre' ? '0.88' : '0.95'} />
+                      </linearGradient>
+
                       {/* Gradient neutre en attente */}
                       <linearGradient id="grad-empty-dark" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#1e293b" stopOpacity="0.8" />
-                        <stop offset="100%" stopColor="#0f172a" stopOpacity="0.9" />
+                        <stop offset="0%" stopColor="#ffffff" stopOpacity="0.92" />
+                        <stop offset="100%" stopColor="#f1f5f9" stopOpacity="0.88" />
                       </linearGradient>
 
                       <linearGradient id="grad-empty-light" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
-                        <stop offset="100%" stopColor="#f1f5f9" stopOpacity="0.95" />
+                        <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                        <stop offset="100%" stopColor="#f8fafc" stopOpacity="0.98" />
                       </linearGradient>
 
                       {/* Filtre de glow pour la région active */}
@@ -734,24 +767,33 @@ export default function CartographiePage() {
                         const isHovered =
                           hoveredRegionId === vec.id || (vec.linkedDrId && hoveredRegionId === vec.linkedDrId);
 
+                        const soldeStock = regData ? regData.soldeStock : 0;
                         const hasRecu = regData ? regData.totalRecu > 0 : false;
                         const hasDistribue = regData ? regData.totalDistribue > 0 : false;
                         const taux = regData ? regData.tauxDistributionPct : 0;
 
                         // Attribution dynamique de couleur
-                        let fillStyle = mapTheme === 'sombre' ? 'url(#grad-empty-dark)' : 'url(#grad-empty-light)';
-                        let strokeColor = mapTheme === 'sombre' ? '#334155' : '#cbd5e1';
+                        // RÈGLE MÉTIER : Mettre en blanc les régions dont le stock est égal à 0
+                        let fillStyle = 'url(#grad-zero-stock)';
+                        let strokeColor = mapTheme === 'sombre' ? '#64748b' : '#94a3b8';
                         let strokeWidth = 1.2;
 
-                        if (hasDistribue && taux >= 80) {
-                          fillStyle = 'url(#grad-delivered)';
-                          strokeColor = '#10b981';
-                        } else if (hasDistribue) {
-                          fillStyle = 'url(#grad-distributing)';
-                          strokeColor = '#f59e0b';
-                        } else if (hasRecu) {
-                          fillStyle = 'url(#grad-stock)';
-                          strokeColor = '#8b5cf6';
+                        if (soldeStock > 0) {
+                          // La région a des cartes en stock
+                          if (hasDistribue && taux >= 80) {
+                            fillStyle = 'url(#grad-delivered)';
+                            strokeColor = '#10b981';
+                          } else if (hasDistribue) {
+                            fillStyle = 'url(#grad-distributing)';
+                            strokeColor = '#f59e0b';
+                          } else {
+                            fillStyle = 'url(#grad-stock)';
+                            strokeColor = '#8b5cf6';
+                          }
+                        } else {
+                          // Stock = 0 (ou non dotée ou entièrement distribuée) => Blanc
+                          fillStyle = 'url(#grad-zero-stock)';
+                          strokeColor = mapTheme === 'sombre' ? '#94a3b8' : '#cbd5e1';
                         }
 
                         if (isSelected) {
@@ -800,8 +842,10 @@ export default function CartographiePage() {
                           const isSelected =
                             selectedRegionId === vec.id || (vec.linkedDrId && selectedRegionId === vec.linkedDrId);
                           const [cx, cy] = vec.centroid;
+                          const soldeStock = regData ? regData.soldeStock : 0;
                           const hasRecu = regData ? regData.totalRecu > 0 : false;
                           const hasDistribue = regData ? regData.totalDistribue > 0 : false;
+                          const isZeroStock = soldeStock === 0;
 
                           return (
                             <g key={`lbl-${vec.id}`}>
@@ -809,8 +853,8 @@ export default function CartographiePage() {
                               <circle
                                 cx={cx}
                                 cy={cy}
-                                r={isSelected ? 4.5 : hasRecu ? 3.5 : 2.5}
-                                fill={isSelected ? '#ffffff' : hasRecu ? '#38bdf8' : '#64748b'}
+                                r={isSelected ? 4.5 : soldeStock > 0 ? 3.5 : 2.5}
+                                fill={isSelected ? '#ffffff' : soldeStock > 0 ? '#a855f7' : '#94a3b8'}
                                 stroke={isSelected ? '#f97316' : '#0f172a'}
                                 strokeWidth={isSelected ? 2 : 1}
                               />
@@ -825,15 +869,18 @@ export default function CartographiePage() {
                                 fill={
                                   isSelected
                                     ? '#ffffff'
+                                    : isZeroStock
+                                    ? '#0f172a'
                                     : mapTheme === 'sombre'
                                     ? '#f8fafc'
                                     : '#0f172a'
                                 }
                                 style={{
-                                  filter:
-                                    mapTheme === 'sombre'
-                                      ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.95))'
-                                      : 'drop-shadow(0 1px 2px rgba(255,255,255,0.9))',
+                                  filter: isZeroStock
+                                    ? 'drop-shadow(0 1px 2px rgba(255,255,255,0.95))'
+                                    : mapTheme === 'sombre'
+                                    ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.95))'
+                                    : 'drop-shadow(0 1px 2px rgba(255,255,255,0.9))',
                                 }}
                               >
                                 {vec.nomCourt}
@@ -848,10 +895,12 @@ export default function CartographiePage() {
                                     width="50"
                                     height="13"
                                     rx="6.5"
-                                    fill={isSelected ? '#7c2d12' : '#070b14'}
+                                    fill={isSelected ? '#7c2d12' : isZeroStock ? '#ffffff' : '#070b14'}
                                     stroke={
                                       isSelected
                                         ? '#f97316'
+                                        : isZeroStock
+                                        ? '#cbd5e1'
                                         : regData.tauxDistributionPct >= 80
                                         ? '#10b981'
                                         : '#8b5cf6'
@@ -865,10 +914,10 @@ export default function CartographiePage() {
                                     textAnchor="middle"
                                     fontSize="7.5"
                                     fontWeight="bold"
-                                    fill="#ffffff"
+                                    fill={isSelected ? '#ffffff' : isZeroStock ? '#475569' : '#ffffff'}
                                     className="font-mono tracking-tight"
                                   >
-                                    {regData.totalRecu} {hasDistribue ? `| ${regData.totalDistribue}✓` : ''}
+                                    {isZeroStock ? 'Stock: 0' : `${regData.soldeStock} en stock`}
                                   </text>
                                 </g>
                               )}
@@ -901,19 +950,21 @@ export default function CartographiePage() {
                   </button>
 
                   <button
-                    onClick={() => setSelectedStatus('DOTEES')}
-                    className="flex items-center gap-1.5 hover:text-white transition"
+                    onClick={() => setSelectedStatus((s) => (s === 'EN_STOCK' ? 'TOUS' : 'EN_STOCK'))}
+                    className={`flex items-center gap-1.5 transition ${
+                      selectedStatus === 'EN_STOCK' ? 'text-purple-300 font-bold' : 'hover:text-white'
+                    }`}
                   >
                     <span className="w-3 h-3 rounded-full bg-purple-500 shadow-sm shadow-purple-500/50" />
-                    <span>En stock (Réceptionné)</span>
+                    <span>Cartes en stock</span>
                   </button>
 
                   <button
                     onClick={() => setSelectedStatus('NON_DOTEES')}
                     className="flex items-center gap-1.5 hover:text-white transition"
                   >
-                    <span className="w-3 h-3 rounded-full bg-slate-700 border border-slate-600" />
-                    <span>Non doté (En attente)</span>
+                    <span className="w-3 h-3 rounded-full bg-white border border-slate-300 shadow-sm" />
+                    <span className="text-white font-medium">Stock = 0 (Blanc)</span>
                   </button>
                 </div>
 

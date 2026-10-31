@@ -68,22 +68,80 @@ export default function LivraisonCartesPage() {
   const [recentLivraisons, setRecentLivraisons] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchEntites('');
+    // 1. Détection des paramètres passés en URL (?entite=... &quantite=...)
+    let initialEntiteParam: string | null = null;
+    let initialQuantiteParam: string | null = null;
+
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      initialEntiteParam = urlParams.get('entite');
+      initialQuantiteParam = urlParams.get('quantite');
+
+      if (initialQuantiteParam && !isNaN(parseInt(initialQuantiteParam, 10))) {
+        setQuantite(String(parseInt(initialQuantiteParam, 10)));
+      }
+    }
+
+    fetchEntites('', initialEntiteParam);
     fetchRecentLivraisons();
   }, []);
 
-  const fetchEntites = async (query: string) => {
+  const fetchEntites = async (query: string, preselectId?: string | null) => {
     try {
       setIsSearching(true);
       const res = await fetch(`/api/entites?q=${encodeURIComponent(query)}&all=true&concernees_only=true`);
       if (res.ok) {
         const data = await res.json();
-        setEntites(data.entites || []);
+        const list: EntiteOption[] = data.entites || [];
+        setEntites(list);
+
+        // Si une entité est ciblée par paramètre d'URL, la sélectionner automatiquement
+        if (preselectId) {
+          const match = list.find(
+            (e) =>
+              e.id_entite.toLowerCase() === preselectId.toLowerCase() ||
+              e.nom.toLowerCase() === preselectId.toLowerCase()
+          );
+          if (match) {
+            setSelectedEntite(match);
+            // Si la quantité n'avait pas été transmise explicitement, on peut pré-remplir avec son solde de stock disponible
+            if (match.solde_stock_disponible !== undefined && match.solde_stock_disponible > 0) {
+              setQuantite((prev) => (prev ? prev : String(match.solde_stock_disponible)));
+            }
+          } else {
+            // Si non présente dans la liste restreinte "concernees_only", faire une recherche directe
+            fetchSpecificEntite(preselectId);
+          }
+        }
       }
     } catch (err) {
       console.error('Erreur chargement entités:', err);
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const fetchSpecificEntite = async (idOrQuery: string) => {
+    try {
+      const res = await fetch(`/api/entites?q=${encodeURIComponent(idOrQuery)}&all=true`);
+      if (res.ok) {
+        const data = await res.json();
+        const list: EntiteOption[] = data.entites || [];
+        const match =
+          list.find(
+            (e) =>
+              e.id_entite.toLowerCase() === idOrQuery.toLowerCase() ||
+              e.nom.toLowerCase() === idOrQuery.toLowerCase()
+          ) || list[0];
+        if (match) {
+          setSelectedEntite(match);
+          if (match.solde_stock_disponible !== undefined && match.solde_stock_disponible > 0) {
+            setQuantite((prev) => (prev ? prev : String(match.solde_stock_disponible)));
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Erreur chargement entité spécifique:', err);
     }
   };
 
