@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import ThemeSelectorModal from '@/components/ThemeSelectorModal';
-import ThemeToggleButton from '@/components/ThemeToggleButton';
 import SessionIdleTracker from '@/components/SessionIdleTracker';
 
 export const metadata: Metadata = {
@@ -57,7 +56,6 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
           <ThemeSelectorModal />
-          <ThemeToggleButton variant="floating" />
           <SessionIdleTracker />
         </ThemeProvider>
       </body>
